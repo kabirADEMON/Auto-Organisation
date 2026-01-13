@@ -56,7 +56,7 @@ export default defineConfig({
       }
     })
   ],
-  base: process.env.NODE_ENV === 'production' ? '/gestion/' : '/',
+  base: '/',
   build: {
     outDir: 'dist',
     sourcemap: false

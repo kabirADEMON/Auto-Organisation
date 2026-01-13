@@ -1,64 +1,43 @@
 import React from 'react';
-import { format } from 'date-fns';
+import { format, isAfter, startOfDay } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { Check } from 'lucide-react';
 
-const HabitCheckbox = ({ habit, date, isChecked, onToggle, streak, completionRate }) => {
+const HabitCheckbox = ({ habit, date, isChecked, onToggle }) => {
   const dateStr = format(date, 'yyyy-MM-dd');
-  const isToday = format(new Date(), 'yyyy-MM-dd') === dateStr;
+  const today = startOfDay(new Date());
+  const isToday = format(today, 'yyyy-MM-dd') === dateStr;
+  const isFuture = isAfter(date, today);
 
   return (
-    <div className={`p-4 rounded-lg border-2 transition-all duration-200 ${
-      isChecked 
-        ? 'bg-green-50 dark:bg-green-900 border-green-300 dark:border-green-700' 
-        : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700'
-    } ${isToday ? 'ring-2 ring-primary-500' : ''}`}>
-      <div className="flex items-center justify-between">
-        <div className="flex-1">
-          <div className="flex items-center space-x-3">
-            <input
-              type="checkbox"
-              checked={isChecked || false}
-              onChange={() => onToggle(habit.id, dateStr)}
-              className="w-6 h-6 text-green-600 rounded focus:ring-green-500"
-              disabled={format(date, 'yyyy-MM-dd') > format(new Date(), 'yyyy-MM-dd')}
-            />
-            <div>
-              <h3 className="font-semibold text-gray-900 dark:text-gray-100">
-                {habit.name}
-              </h3>
-              {habit.description && (
-                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                  {habit.description}
-                </p>
-              )}
-            </div>
-          </div>
+    <div className="flex flex-col items-center gap-2">
+      <span className={`text-[10px] font-black uppercase tracking-widest ${isToday ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400 dark:text-slate-500'}`}>
+        {format(date, 'EEE', { locale: fr }).replace('.', '')}
+      </span>
 
-          <div className="mt-3 flex items-center space-x-4 text-sm">
-            {streak !== undefined && (
-              <span className="text-orange-600 dark:text-orange-400 font-medium">
-                🔥 Streak: {streak} jours
-              </span>
-            )}
-            {completionRate !== undefined && (
-              <span className="text-blue-600 dark:text-blue-400">
-                📊 {Math.round(completionRate)}% complété
-              </span>
-            )}
-          </div>
-        </div>
+      <button
+        onClick={() => !isFuture && onToggle(habit.id, dateStr)}
+        disabled={isFuture}
+        className={`
+                relative w-full aspect-square rounded-2xl flex items-center justify-center transition-all duration-300
+                ${isChecked
+            ? 'bg-gradient-to-br from-emerald-400 to-teal-600 shadow-lg shadow-emerald-500/20 text-white scale-105'
+            : isFuture
+              ? 'bg-slate-100 dark:bg-slate-800/20 border border-slate-200 dark:border-slate-800 opacity-30 cursor-not-allowed'
+              : 'bg-white dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 hover:border-blue-500/50'
+          }
+                ${isToday && !isChecked ? 'ring-2 ring-blue-500/50 shadow-blue-500/10' : ''}
+                active:scale-90
+            `}
+      >
+        <span className={`text-xs font-bold ${!isChecked && !isFuture ? 'text-slate-400 dark:text-slate-500' : ''}`}>
+          {isChecked ? <Check size={18} strokeWidth={4} /> : format(date, 'd')}
+        </span>
 
-        <div className="text-right">
-          <div className="text-xs text-gray-500 dark:text-gray-400">
-            {format(date, 'dd MMM', { locale: fr })}
-          </div>
-          {isToday && (
-            <div className="text-xs text-primary-600 dark:text-primary-400 font-medium mt-1">
-              Aujourd'hui
-            </div>
-          )}
-        </div>
-      </div>
+        {isToday && !isChecked && (
+          <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-blue-500 rounded-full border-2 border-white dark:border-slate-900 animate-pulse"></div>
+        )}
+      </button>
     </div>
   );
 };

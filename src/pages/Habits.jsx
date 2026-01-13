@@ -3,9 +3,22 @@ import { collection, query, where, onSnapshot, addDoc, updateDoc, deleteDoc, doc
 import { db, auth } from '../firebaseConfig';
 import HabitCheckbox from '../components/HabitCheckbox';
 import Modal from '../components/Modal';
-import { format, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, parseISO } from 'date-fns';
+import { format, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, parseISO, subDays } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { showToast } from '../components/ToastContainer';
+import {
+  Plus,
+  ChevronLeft,
+  ChevronRight,
+  Flame,
+  Trophy,
+  Calendar as CalendarIcon,
+  Settings2,
+  Trash2,
+  Edit3,
+  Target,
+  Sparkles
+} from 'lucide-react';
 
 const Habits = () => {
   const [habits, setHabits] = useState([]);
@@ -38,7 +51,7 @@ const Habits = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!formData.name.trim()) {
       showToast('Le nom est requis', 'error');
       return;
@@ -115,149 +128,184 @@ const Habits = () => {
 
   const calculateStreak = (habit) => {
     if (!habit.completions) return 0;
-    
+
     let streak = 0;
     const today = new Date();
     let currentDate = new Date(today);
-    
+
+    // Check if completed today, if not start from yesterday
+    const todayStr = format(today, 'yyyy-MM-dd');
+    if (habit.completions[todayStr] !== true) {
+      currentDate = subDays(today, 1);
+    }
+
     while (true) {
       const dateStr = format(currentDate, 'yyyy-MM-dd');
       if (habit.completions[dateStr] === true) {
         streak++;
-        currentDate.setDate(currentDate.getDate() - 1);
+        currentDate = subDays(currentDate, 1);
       } else {
         break;
       }
     }
-    
+
     return streak;
   };
 
   const calculateCompletionRate = (habit) => {
     if (!habit.completions) return 0;
-    
+
     const completions = Object.values(habit.completions);
     const completed = completions.filter(c => c === true).length;
     return completions.length > 0 ? (completed / completions.length) * 100 : 0;
   };
 
   const weekDays = eachDayOfInterval({
-    start: startOfWeek(selectedDate, { locale: fr }),
-    end: endOfWeek(selectedDate, { locale: fr })
+    start: startOfWeek(selectedDate, { locale: fr, weekStartsOn: 1 }),
+    end: endOfWeek(selectedDate, { locale: fr, weekStartsOn: 1 })
   });
 
   return (
-    <div>
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4 md:mb-0">
-          Mes Habitudes
-        </h1>
+    <div className="page-transition min-h-screen pb-20">
+      <div className="flex flex-col md:flex-row md:items-end md:justify-between mb-8 gap-4">
+        <div>
+          <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tight italic">
+            Mes <span className="text-emerald-500">Habitudes</span>
+          </h1>
+          <p className="text-slate-500 dark:text-slate-400 mt-1 font-medium">
+            La discipline est la clé de la <span className="text-emerald-500 font-bold italic">réussite</span>.
+          </p>
+        </div>
         <button
           onClick={() => {
             resetForm();
             setIsModalOpen(true);
           }}
-          className="btn btn-primary"
+          className="btn btn-primary bg-gradient-to-r from-emerald-500 to-teal-600 shadow-emerald-500/20 px-6 h-12 rounded-2xl group"
         >
-          ➕ Nouvelle habitude
+          <div className="bg-white/20 p-1 rounded-lg group-hover:rotate-90 transition-transform">
+            <Plus size={20} />
+          </div>
+          Nouvelle routine
         </button>
       </div>
 
-      {/* Navigation semaine */}
-      <div className="flex items-center justify-between mb-6">
+      {/* Week Navigator */}
+      <div className="card mb-8 p-3 flex items-center justify-between bg-white/50 dark:bg-slate-800/50 backdrop-blur-xl border-slate-100 dark:border-slate-800">
         <button
           onClick={() => {
             const newDate = new Date(selectedDate);
             newDate.setDate(newDate.getDate() - 7);
             setSelectedDate(newDate);
           }}
-          className="btn btn-secondary"
+          className="p-2 text-slate-400 hover:text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-xl transition-all"
         >
-          ← Semaine précédente
+          <ChevronLeft size={24} />
         </button>
-        <h2 className="text-lg font-semibold">
-          {format(startOfWeek(selectedDate, { locale: fr }), 'dd MMM', { locale: fr })} - {format(endOfWeek(selectedDate, { locale: fr }), 'dd MMM yyyy', { locale: fr })}
-        </h2>
+
+        <div className="flex flex-col items-center">
+          <div className="flex items-center gap-2 text-slate-900 dark:text-white font-black text-lg">
+            <CalendarIcon size={18} className="text-emerald-500" />
+            <span>
+              {format(weekDays[0], 'dd MMM', { locale: fr })} - {format(weekDays[6], 'dd MMM yyyy', { locale: fr })}
+            </span>
+          </div>
+          {isSameDay(startOfWeek(new Date(), { locale: fr, weekStartsOn: 1 }), startOfWeek(selectedDate, { locale: fr, weekStartsOn: 1 })) && (
+            <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest mt-0.5">Semaine actuelle</span>
+          )}
+        </div>
+
         <button
           onClick={() => {
             const newDate = new Date(selectedDate);
             newDate.setDate(newDate.getDate() + 7);
             setSelectedDate(newDate);
           }}
-          className="btn btn-secondary"
+          className="p-2 text-slate-400 hover:text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-xl transition-all"
         >
-          Semaine suivante →
+          <ChevronRight size={24} />
         </button>
       </div>
 
-      {/* Liste des habitudes */}
-      <div className="space-y-4">
+      {/* Habits List */}
+      <div className="space-y-6">
         {habits.length === 0 ? (
-          <div className="card text-center py-12">
-            <p className="text-gray-500 dark:text-gray-400">Aucune habitude. Créez-en une pour commencer!</p>
+          <div className="card py-20 bg-slate-50 dark:bg-slate-900 border-dashed border-2 border-slate-200 dark:border-slate-800 flex flex-col items-center">
+            <div className="w-16 h-16 bg-white dark:bg-slate-800 rounded-2xl flex items-center justify-center text-emerald-500 shadow-xl mb-4">
+              <Sparkles size={32} />
+            </div>
+            <p className="text-slate-500 dark:text-slate-400 font-bold text-lg">Aucune routine enregistrée</p>
+            <p className="text-slate-400 text-sm mt-1">Commencez par créer votre première habitude pour suivre vos progrès</p>
           </div>
         ) : (
-          habits.map((habit) => {
+          habits.map((habit, habitIdx) => {
             const streak = calculateStreak(habit);
-            const completionRate = calculateCompletionRate(habit);
-            
+            const rate = calculateCompletionRate(habit);
+
             return (
-              <div key={habit.id} className="card">
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
-                      {habit.name}
-                    </h3>
-                    {habit.description && (
-                      <p className="text-gray-600 dark:text-gray-400 mt-1">{habit.description}</p>
-                    )}
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <button
-                      onClick={() => handleEdit(habit)}
-                      className="p-2 text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400"
-                      title="Modifier"
-                    >
-                      ✏️
-                    </button>
-                    <button
-                      onClick={() => handleDelete(habit.id)}
-                      className="p-2 text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400"
-                      title="Supprimer"
-                    >
-                      🗑️
-                    </button>
-                  </div>
-                </div>
+              <div key={habit.id} className="card p-0 overflow-hidden animate-in fade-in slide-in-from-bottom-4" style={{ animationDelay: `${habitIdx * 100}ms` }}>
+                <div className="p-6">
+                  <div className="flex items-start justify-between mb-6">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-emerald-50 dark:bg-emerald-900/20 rounded-2xl flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                        <Target size={24} />
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-black text-slate-900 dark:text-white leading-tight">
+                          {habit.name}
+                        </h3>
+                        {habit.description && (
+                          <p className="text-slate-500 dark:text-slate-400 text-sm font-medium mt-0.5">{habit.description}</p>
+                        )}
+                      </div>
+                    </div>
 
-                {/* Statistiques */}
-                <div className="grid grid-cols-2 gap-4 mb-4">
-                  <div className="bg-orange-50 dark:bg-orange-900 p-3 rounded-lg">
-                    <div className="text-sm text-orange-600 dark:text-orange-400">Streak actuel</div>
-                    <div className="text-2xl font-bold text-orange-700 dark:text-orange-300">{streak} jours</div>
-                  </div>
-                  <div className="bg-blue-50 dark:bg-blue-900 p-3 rounded-lg">
-                    <div className="text-sm text-blue-600 dark:text-blue-400">Taux de complétion</div>
-                    <div className="text-2xl font-bold text-blue-700 dark:text-blue-300">{Math.round(completionRate)}%</div>
-                  </div>
-                </div>
+                    <div className="flex items-center gap-6">
+                      <div className="hidden sm:flex items-center gap-4">
+                        <div className="text-right">
+                          <div className="flex items-center gap-1 justify-end text-orange-500 font-black">
+                            <Flame size={16} fill="currentColor" />
+                            <span>{streak}j</span>
+                          </div>
+                          <div className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">Série</div>
+                        </div>
+                        <div className="text-right">
+                          <div className="flex items-center gap-1 justify-end text-blue-500 font-black">
+                            <Trophy size={16} />
+                            <span>{Math.round(rate)}%</span>
+                          </div>
+                          <div className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">Succès</div>
+                        </div>
+                      </div>
 
-                {/* Semaine */}
-                <div className="grid grid-cols-7 gap-2">
-                  {weekDays.map((date) => {
-                    const dateStr = format(date, 'yyyy-MM-dd');
-                    const isChecked = habit.completions && habit.completions[dateStr] === true;
-                    
-                    return (
-                      <HabitCheckbox
-                        key={dateStr}
-                        habit={habit}
-                        date={date}
-                        isChecked={isChecked}
-                        onToggle={handleToggle}
-                      />
-                    );
-                  })}
+                      <div className="flex items-center gap-1 border-l border-slate-100 dark:border-slate-800 pl-4">
+                        <button onClick={() => handleEdit(habit)} className="p-2 text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-xl transition-all">
+                          <Edit3 size={18} />
+                        </button>
+                        <button onClick={() => handleDelete(habit.id)} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-all">
+                          <Trash2 size={18} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Week Grid */}
+                  <div className="grid grid-cols-7 gap-3 sm:gap-4">
+                    {weekDays.map((date) => {
+                      const dateStr = format(date, 'yyyy-MM-dd');
+                      const isChecked = habit.completions && habit.completions[dateStr] === true;
+
+                      return (
+                        <HabitCheckbox
+                          key={dateStr}
+                          habit={habit}
+                          date={date}
+                          isChecked={isChecked}
+                          onToggle={handleToggle}
+                        />
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
             );
@@ -265,56 +313,58 @@ const Habits = () => {
         )}
       </div>
 
-      {/* Modal de création/édition */}
+      {/* Modal Upgrade */}
       <Modal
         isOpen={isModalOpen}
         onClose={() => {
           setIsModalOpen(false);
           resetForm();
         }}
-        title={editingHabit ? 'Modifier l\'habitude' : 'Nouvelle habitude'}
+        title={editingHabit ? 'Modifier la routine' : 'Nouvelle routine'}
       >
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Nom *
-            </label>
-            <input
-              type="text"
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="input"
-              required
-              placeholder="Ex: Boire 2L d'eau"
-            />
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2 flex items-center gap-2">
+                <Target size={16} className="text-emerald-500" />
+                Intitulé de l'habitude
+              </label>
+              <input
+                type="text"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                className="input text-lg font-medium"
+                required
+                placeholder="Méditation, Sport, Lecture..."
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
+                Pourquoi est-ce important ?
+              </label>
+              <textarea
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                className="input min-h-[100px] resize-none"
+                placeholder="Décrivez votre motivation ou les détails de l'exercice..."
+              />
+            </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Description
-            </label>
-            <textarea
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              className="input"
-              rows="3"
-              placeholder="Description optionnelle"
-            />
-          </div>
-
-          <div className="flex justify-end space-x-3 pt-4">
+          <div className="flex gap-3 pt-2">
             <button
               type="button"
               onClick={() => {
                 setIsModalOpen(false);
                 resetForm();
               }}
-              className="btn btn-secondary"
+              className="btn btn-secondary flex-1 py-3 rounded-xl border-none hover:bg-slate-100"
             >
               Annuler
             </button>
-            <button type="submit" className="btn btn-primary">
-              {editingHabit ? 'Modifier' : 'Créer'}
+            <button type="submit" className="btn btn-primary bg-gradient-to-r from-emerald-500 to-teal-600 flex-[2] py-3 rounded-xl shadow-emerald-500/20">
+              {editingHabit ? 'Confirmer' : 'Commencer'}
             </button>
           </div>
         </form>

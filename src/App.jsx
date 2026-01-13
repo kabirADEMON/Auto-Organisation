@@ -35,10 +35,20 @@ function App() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600 dark:text-gray-400">Chargement...</p>
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950">
+        <div className="relative">
+          <div className="absolute inset-0 bg-blue-500/20 blur-[100px] rounded-full"></div>
+          <div className="relative flex flex-col items-center">
+            <div className="w-16 h-16 border-4 border-slate-200 dark:border-slate-800 border-t-blue-600 rounded-full animate-spin"></div>
+            <div className="mt-8">
+              <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-widest uppercase italic">Soper</h1>
+              <div className="flex justify-center gap-1 mt-1">
+                {[1, 2, 3].map(i => (
+                  <div key={i} className="w-1.5 h-1.5 bg-blue-600 rounded-full animate-pulse" style={{ animationDelay: `${i * 200}ms` }}></div>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -48,11 +58,11 @@ function App() {
     <ThemeProvider>
       <AuthContext.Provider value={{ user }}>
         <Router basename={import.meta.env.BASE_URL}>
-          <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+          <div className="min-h-screen bg-[#fafbfc] dark:bg-slate-950 text-slate-900 dark:text-slate-100 selection:bg-blue-500/30">
             {user ? (
               <>
                 <Navbar />
-                <main className="container mx-auto px-4 py-8 max-w-7xl">
+                <main className="container mx-auto px-4 py-8 md:py-12 max-w-7xl">
                   <Routes>
                     <Route path="/" element={<Navigate to="/dashboard" replace />} />
                     <Route path="/tasks" element={<Tasks />} />

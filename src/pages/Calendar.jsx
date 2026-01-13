@@ -3,9 +3,17 @@ import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db, auth } from '../firebaseConfig';
 import CalendarDay from '../components/CalendarDay';
 import Modal from '../components/Modal';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, startOfWeek, endOfWeek, isSameDay, isSameMonth } from 'date-fns';
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, startOfWeek, endOfWeek, isSameDay, isSameMonth, addMonths, subMonths } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { showToast } from '../components/ToastContainer';
+import {
+  ChevronLeft,
+  ChevronRight,
+  Calendar as CalendarIcon,
+  Clock,
+  CheckCircle2,
+  AlertCircle,
+  Activity
+} from 'lucide-react';
 
 const Calendar = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -13,6 +21,7 @@ const Calendar = () => {
   const [habits, setHabits] = useState([]);
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedDayTasks, setSelectedDayTasks] = useState([]);
+  const [selectedDayHabits, setSelectedDayHabits] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
@@ -52,8 +61,8 @@ const Calendar = () => {
 
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
-  const calendarStart = startOfWeek(monthStart, { locale: fr });
-  const calendarEnd = endOfWeek(monthEnd, { locale: fr });
+  const calendarStart = startOfWeek(monthStart, { locale: fr, weekStartsOn: 1 });
+  const calendarEnd = endOfWeek(monthEnd, { locale: fr, weekStartsOn: 1 });
 
   const calendarDays = eachDayOfInterval({
     start: calendarStart,
@@ -62,15 +71,11 @@ const Calendar = () => {
 
   const handleDayClick = (date) => {
     setSelectedDate(date);
-    const dateStr = format(date, 'yyyy-MM-dd');
-    
-    const dayTasks = tasks.filter(task => {
-      if (!task.dueDate) return false;
-      const taskDate = task.dueDate.toDate ? task.dueDate.toDate() : new Date(task.dueDate);
-      return isSameDay(taskDate, date);
-    });
+    const dayTasks = getTasksForDay(date);
+    const dayHabits = getHabitsForDay(date);
 
     setSelectedDayTasks(dayTasks);
+    setSelectedDayHabits(dayHabits);
     setIsModalOpen(true);
   };
 
@@ -89,136 +94,173 @@ const Calendar = () => {
     });
   };
 
-  const goToPreviousMonth = () => {
-    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
-  };
-
-  const goToNextMonth = () => {
-    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
-  };
-
-  const goToToday = () => {
-    setCurrentDate(new Date());
-  };
+  const goToPreviousMonth = () => setCurrentDate(subMonths(currentDate, 1));
+  const goToNextMonth = () => setCurrentDate(addMonths(currentDate, 1));
+  const goToToday = () => setCurrentDate(new Date());
 
   const weekDays = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
 
   return (
-    <div>
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4 md:mb-0">
-          Calendrier
-        </h1>
-        <div className="flex items-center space-x-2">
-          <button onClick={goToToday} className="btn btn-secondary">
-            Aujourd'hui
-          </button>
+    <div className="page-transition min-h-screen pb-20">
+      <div className="flex flex-col md:flex-row md:items-end md:justify-between mb-8 gap-4">
+        <div>
+          <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tight italic">
+            Mon <span className="text-indigo-600">Calendrier</span>
+          </h1>
+          <p className="text-slate-500 dark:text-slate-400 mt-1 font-medium">
+            Visualisez votre <span className="text-indigo-600 font-bold italic">progression</span> dans le temps.
+          </p>
         </div>
+        <button
+          onClick={goToToday}
+          className="btn btn-secondary h-12 px-6 rounded-2xl font-bold flex items-center gap-2 border-slate-200 dark:border-slate-800"
+        >
+          <CalendarIcon size={18} />
+          Aujourd'hui
+        </button>
       </div>
 
-      {/* Navigation mois */}
-      <div className="card mb-6">
-        <div className="flex items-center justify-between mb-4">
-          <button onClick={goToPreviousMonth} className="btn btn-secondary">
-            ←
+      {/* Month Navigator & Calendar Grid */}
+      <div className="card p-0 overflow-hidden border-slate-100 dark:border-slate-800 shadow-2xl">
+        <div className="p-6 bg-slate-50 dark:bg-slate-800/30 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+          <button onClick={goToPreviousMonth} className="p-2 hover:bg-white dark:hover:bg-slate-700 rounded-xl transition-all shadow-sm">
+            <ChevronLeft size={24} />
           </button>
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+          <h2 className="text-2xl font-black text-slate-900 dark:text-white italic">
             {format(currentDate, 'MMMM yyyy', { locale: fr })}
           </h2>
-          <button onClick={goToNextMonth} className="btn btn-secondary">
-            →
+          <button onClick={goToNextMonth} className="p-2 hover:bg-white dark:hover:bg-slate-700 rounded-xl transition-all shadow-sm">
+            <ChevronRight size={24} />
           </button>
         </div>
 
-        {/* Grille calendrier */}
-        <div className="grid grid-cols-7 gap-2">
-          {/* En-têtes des jours */}
-          {weekDays.map((day) => (
-            <div
-              key={day}
-              className="text-center font-semibold text-gray-700 dark:text-gray-300 py-2"
-            >
-              {day}
+        <div className="p-4 sm:p-6">
+          <div className="grid grid-cols-7 gap-1 sm:gap-2">
+            {weekDays.map((day) => (
+              <div key={day} className="text-center font-black text-[10px] uppercase tracking-widest text-slate-400 py-3">
+                {day}
+              </div>
+            ))}
+
+            {calendarDays.map((date) => (
+              <CalendarDay
+                key={date.toISOString()}
+                date={date}
+                tasks={getTasksForDay(date)}
+                habits={getHabitsForDay(date)}
+                onDayClick={handleDayClick}
+                isToday={isSameDay(date, new Date())}
+                isCurrentMonth={isSameMonth(date, currentDate)}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Legend & Summary */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
+        <div className="md:col-span-2 card bg-slate-50/50 dark:bg-slate-800/20 border-slate-100 dark:border-slate-800">
+          <h3 className="font-black text-sm uppercase tracking-widest text-slate-400 mb-4 flex items-center gap-2">
+            <Activity size={16} className="text-blue-500" />
+            Guide de lecture
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+              <span className="text-sm font-bold text-slate-600 dark:text-slate-400">Tâches en attente</span>
             </div>
-          ))}
-
-          {/* Jours du calendrier */}
-          {calendarDays.map((date) => (
-            <CalendarDay
-              key={date.toISOString()}
-              date={date}
-              tasks={getTasksForDay(date)}
-              habits={getHabitsForDay(date)}
-              onDayClick={handleDayClick}
-              isToday={isSameDay(date, new Date())}
-              isCurrentMonth={isSameMonth(date, currentDate)}
-            />
-          ))}
+            <div className="flex items-center gap-3">
+              <div className="w-3 h-3 bg-emerald-500 rounded-full"></div>
+              <span className="text-sm font-bold text-slate-600 dark:text-slate-400">Tâches terminées</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+              <span className="text-sm font-bold text-slate-600 dark:text-slate-400">Date du jour</span>
+            </div>
+          </div>
         </div>
-      </div>
 
-      {/* Légende */}
-      <div className="card">
-        <h3 className="font-semibold mb-3">Légende</h3>
-        <div className="flex flex-wrap gap-4 text-sm">
-          <div className="flex items-center space-x-2">
-            <div className="w-4 h-4 bg-red-100 dark:bg-red-900 rounded"></div>
-            <span>Tâches en retard</span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <div className="w-4 h-4 bg-green-100 dark:bg-green-900 rounded"></div>
-            <span>Tâches complétées</span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <div className="w-4 h-4 bg-purple-100 dark:bg-purple-900 rounded"></div>
-            <span>Habitudes complétées</span>
+        <div className="card bg-gradient-to-br from-indigo-500 to-purple-600 border-none text-white shadow-indigo-500/20">
+          <h3 className="font-bold text-white/80 text-xs uppercase tracking-widest mb-2">Total ce mois</h3>
+          <div className="flex items-end justify-between">
+            <div>
+              <div className="text-3xl font-black leading-none">{tasks.filter(t => isSameMonth(t.dueDate?.toDate ? t.dueDate.toDate() : new Date(t.dueDate), currentDate)).length}</div>
+              <div className="text-[10px] font-bold uppercase opacity-80 mt-1">Objectifs</div>
+            </div>
+            <div className="text-right">
+              <div className="text-3xl font-black leading-none">{habits.length}</div>
+              <div className="text-[10px] font-bold uppercase opacity-80 mt-1">Routines</div>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Modal détails du jour */}
+      {/* Modal Upgrade */}
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title={selectedDate ? format(selectedDate, 'dd MMMM yyyy', { locale: fr }) : 'Détails'}
+        title={selectedDate ? format(selectedDate, 'EEEE dd MMMM', { locale: fr }) : 'Détails du jour'}
       >
-        {selectedDayTasks.length === 0 ? (
-          <p className="text-gray-500 dark:text-gray-400">Aucune tâche prévue pour ce jour</p>
-        ) : (
-          <div className="space-y-3">
-            {selectedDayTasks.map((task) => (
-              <div
-                key={task.id}
-                className={`p-4 rounded-lg border ${
-                  task.completed
-                    ? 'bg-green-50 dark:bg-green-900 border-green-200 dark:border-green-700'
-                    : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700'
-                }`}
-              >
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h4 className={`font-semibold ${task.completed ? 'line-through text-gray-500' : ''}`}>
-                      {task.title}
-                    </h4>
-                    {task.description && (
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                        {task.description}
-                      </p>
-                    )}
-                    {task.priority && (
-                      <span className="inline-block mt-2 px-2 py-1 text-xs bg-blue-100 dark:bg-blue-900 rounded">
-                        {task.priority}
-                      </span>
-                    )}
-                  </div>
-                  {task.completed && (
-                    <span className="text-green-600 dark:text-green-400">✓</span>
-                  )}
-                </div>
+        <div className="space-y-6">
+          <div>
+            <h4 className="flex items-center gap-2 text-sm font-black uppercase tracking-widest text-slate-400 mb-4">
+              <Clock size={16} className="text-blue-500" />
+              Objectifs du jour
+            </h4>
+            {selectedDayTasks.length === 0 ? (
+              <div className="p-6 bg-slate-50 dark:bg-slate-800/50 rounded-2xl text-center border border-slate-100 dark:border-slate-800">
+                <p className="text-slate-400 text-sm font-medium italic">Aucun objectif programmé</p>
               </div>
-            ))}
+            ) : (
+              <div className="space-y-3">
+                {selectedDayTasks.map((task) => (
+                  <div key={task.id} className="p-4 rounded-xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-800/50 flex items-center justify-between group">
+                    <div className="flex items-center gap-3">
+                      <div className={`p-1 rounded-lg ${task.completed ? 'bg-emerald-100 text-emerald-600' : 'bg-blue-100 text-blue-600'}`}>
+                        {task.completed ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
+                      </div>
+                      <div>
+                        <p className={`font-bold transition-all ${task.completed ? 'line-through text-slate-400' : 'text-slate-800 dark:text-white'}`}>
+                          {task.title}
+                        </p>
+                        <span className="text-[10px] font-black uppercase tracking-tighter text-slate-400">{task.priority}</span>
+                      </div>
+                    </div>
+                    {task.completed && <span className="text-emerald-500 font-black text-xs">OK</span>}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-        )}
+
+          <div>
+            <h4 className="flex items-center gap-2 text-sm font-black uppercase tracking-widest text-slate-400 mb-4">
+              <Activity size={16} className="text-emerald-500" />
+              Routines complétées
+            </h4>
+            {selectedDayHabits.length === 0 ? (
+              <div className="p-6 bg-slate-50 dark:bg-slate-800/50 rounded-2xl text-center border border-slate-100 dark:border-slate-800">
+                <p className="text-slate-400 text-sm font-medium italic">Aucune routine validée ce jour</p>
+              </div>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {selectedDayHabits.map((habit) => (
+                  <div key={habit.id} className="px-4 py-2 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400 rounded-xl text-sm font-bold flex items-center gap-2">
+                    <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
+                    {habit.name}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <button
+            onClick={() => setIsModalOpen(false)}
+            className="w-full py-4 text-slate-900 dark:text-white font-black uppercase tracking-widest text-xs hover:bg-slate-100 dark:hover:bg-slate-800 rounded-2xl transition-all"
+          >
+            Fermer l'aperçu
+          </button>
+        </div>
       </Modal>
     </div>
   );

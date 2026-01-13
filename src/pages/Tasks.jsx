@@ -4,11 +4,24 @@ import { db, auth } from '../firebaseConfig';
 import TaskCard from '../components/TaskCard';
 import Modal from '../components/Modal';
 import { showToast } from '../components/ToastContainer';
+import {
+  Plus,
+  Search,
+  Filter,
+  LayoutGrid,
+  List,
+  CheckCircle2,
+  Circle,
+  Calendar as CalendarIcon,
+  Tag,
+  PlusCircle
+} from 'lucide-react';
 
 const Tasks = () => {
   const [tasks, setTasks] = useState([]);
   const [filter, setFilter] = useState('all'); // all, active, completed
   const [priorityFilter, setPriorityFilter] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
   const [formData, setFormData] = useState({
@@ -34,7 +47,11 @@ const Tasks = () => {
         id: doc.id,
         ...doc.data()
       }));
-      setTasks(tasksData);
+      setTasks(tasksData.sort((a, b) => {
+        // Sort by completion then by priority or date
+        if (a.completed !== b.completed) return a.completed ? 1 : -1;
+        return 0;
+      }));
     });
 
     return () => unsubscribe();
@@ -42,7 +59,7 @@ const Tasks = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!formData.title.trim()) {
       showToast('Le titre est requis', 'error');
       return;
@@ -144,52 +161,81 @@ const Tasks = () => {
   };
 
   const filteredTasks = tasks.filter(task => {
+    const matchesSearch = task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (task.description && task.description.toLowerCase().includes(searchQuery.toLowerCase()));
+    if (!matchesSearch) return false;
+
     if (filter === 'active' && task.completed) return false;
     if (filter === 'completed' && !task.completed) return false;
     if (priorityFilter !== 'all' && task.priority !== priorityFilter) return false;
     return true;
   });
 
+  const activeCount = tasks.filter(t => !t.completed).length;
+
   return (
-    <div>
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4 md:mb-0">
-          Mes Tâches
-        </h1>
+    <div className="page-transition min-h-screen pb-20">
+      <div className="flex flex-col md:flex-row md:items-end md:justify-between mb-8 gap-4">
+        <div>
+          <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tight italic">
+            Mes <span className="text-blue-600">Tâches</span>
+          </h1>
+          <p className="text-slate-500 dark:text-slate-400 mt-1 font-medium">
+            Vous avez <span className="text-blue-600 dark:text-blue-400 font-bold">{activeCount}</span> tâches en cours aujourd'hui.
+          </p>
+        </div>
         <button
           onClick={() => {
             resetForm();
             setIsModalOpen(true);
           }}
-          className="btn btn-primary"
+          className="btn btn-primary h-12 px-6 rounded-2xl group shadow-blue-500/20"
         >
-          ➕ Nouvelle tâche
+          <div className="bg-white/20 p-1 rounded-lg group-hover:rotate-90 transition-transform">
+            <Plus size={20} />
+          </div>
+          Nouvelle tâche
         </button>
       </div>
 
-      {/* Filtres */}
-      <div className="flex flex-wrap gap-4 mb-6">
-        <div className="flex items-center space-x-2">
-          <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Statut:</label>
-          <select
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-            className="input text-sm"
-          >
-            <option value="all">Toutes</option>
-            <option value="active">Actives</option>
-            <option value="completed">Terminées</option>
-          </select>
+      {/* Control Bar */}
+      <div className="card mb-8 p-3 flex flex-col md:flex-row gap-4 items-center bg-white/50 dark:bg-slate-800/50 backdrop-blur-xl border-slate-100 dark:border-slate-800">
+        <div className="relative flex-1 w-full">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+          <input
+            type="text"
+            placeholder="Rechercher une tâche..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-11 pr-4 py-2.5 bg-slate-100/50 dark:bg-slate-700/50 border-none rounded-xl focus:ring-2 focus:ring-blue-500/50 transition-all font-medium text-sm"
+          />
         </div>
-        <div className="flex items-center space-x-2">
-          <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Priorité:</label>
+
+        <div className="flex items-center gap-2 w-full md:w-auto">
+          <div className="flex bg-slate-100/50 dark:bg-slate-700/50 p-1 rounded-xl w-full md:w-auto">
+            {[
+              { id: 'all', label: 'Toutes', icon: LayoutGrid },
+              { id: 'active', label: 'En cours', icon: Circle },
+              { id: 'completed', label: 'Terminées', icon: CheckCircle2 }
+            ].map((item) => (
+              <button
+                key={item.id}
+                onClick={() => setFilter(item.id)}
+                className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${filter === item.id ? 'bg-white dark:bg-slate-600 text-blue-600 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                <item.icon size={14} />
+                <span className="hidden sm:inline">{item.label}</span>
+              </button>
+            ))}
+          </div>
+
           <select
             value={priorityFilter}
             onChange={(e) => setPriorityFilter(e.target.value)}
-            className="input text-sm"
+            className="bg-slate-100/50 dark:bg-slate-700/50 border-none rounded-xl py-2 px-4 text-xs font-bold text-slate-500 focus:ring-2 focus:ring-blue-500/50"
           >
-            <option value="all">Toutes</option>
-            <option value="urgent">Urgent</option>
+            <option value="all">Filtre priorité</option>
+            <option value="urgent">🔴 Urgent</option>
             <option value="high">Important</option>
             <option value="normal">Normal</option>
             <option value="low">Faible</option>
@@ -197,165 +243,178 @@ const Tasks = () => {
         </div>
       </div>
 
-      {/* Liste des tâches */}
-      <div className="space-y-4">
+      {/* Grid of Tasks */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredTasks.length === 0 ? (
-          <div className="card text-center py-12">
-            <p className="text-gray-500 dark:text-gray-400">Aucune tâche trouvée</p>
+          <div className="col-span-full card py-20 bg-slate-50 dark:bg-slate-900 border-dashed border-2 border-slate-200 dark:border-slate-800 flex flex-col items-center">
+            <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center text-slate-400 mb-4">
+              <Search size={32} />
+            </div>
+            <p className="text-slate-500 dark:text-slate-400 font-bold text-lg">Aucune tâche ne correspond à vos critères</p>
+            <p className="text-slate-400 text-sm mt-1">Essayez de modifier vos filtres ou lancez une nouvelle recherche</p>
           </div>
         ) : (
-          filteredTasks.map((task) => (
-            <TaskCard
-              key={task.id}
-              task={task}
-              onToggle={handleToggle}
-              onEdit={handleEdit}
-              onDelete={handleDelete}
-            />
+          filteredTasks.map((task, index) => (
+            <div key={task.id} className="animate-in fade-in slide-in-from-bottom-4" style={{ animationDelay: `${index * 50}ms` }}>
+              <TaskCard
+                task={task}
+                onToggle={handleToggle}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+              />
+            </div>
           ))
         )}
       </div>
 
-      {/* Modal de création/édition */}
+      {/* Modal Overlay Upgrade */}
       <Modal
         isOpen={isModalOpen}
         onClose={() => {
           setIsModalOpen(false);
           resetForm();
         }}
-        title={editingTask ? 'Modifier la tâche' : 'Nouvelle tâche'}
+        title={editingTask ? 'Modifier l\'objectif' : 'Nouvel objectif'}
         size="lg"
       >
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Titre *
-            </label>
-            <input
-              type="text"
-              value={formData.title}
-              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              className="input"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Description
-            </label>
-            <textarea
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              className="input"
-              rows="3"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Priorité
+              <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2 flex items-center gap-2">
+                <Tag size={16} className="text-blue-500" />
+                Désignation de la tâche
+              </label>
+              <input
+                type="text"
+                value={formData.title}
+                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                className="input text-lg font-medium"
+                placeholder="Faire les courses, Préparer la réunion..."
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
+                Détails supplémentaires
+              </label>
+              <textarea
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                className="input min-h-[100px] resize-none"
+                placeholder="Notes, instructions, liens..."
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
+                  Priorité
+                </label>
+                <select
+                  value={formData.priority}
+                  onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
+                  className="input font-bold"
+                >
+                  <option value="low">⚪ Faible</option>
+                  <option value="normal">🔵 Normal</option>
+                  <option value="high">🟠 Important</option>
+                  <option value="urgent">🔴 Urgent</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2 flex items-center gap-2">
+                  <CalendarIcon size={16} className="text-indigo-500" />
+                  Échéance
+                </label>
+                <input
+                  type="date"
+                  value={formData.dueDate}
+                  onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
+                  className="input font-medium"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2 flex items-center gap-2">
+                <LayoutGrid size={16} className="text-violet-500" />
+                Récurrence
               </label>
               <select
-                value={formData.priority}
-                onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
-                className="input"
+                value={formData.recurrence}
+                onChange={(e) => setFormData({ ...formData, recurrence: e.target.value })}
+                className="input font-medium"
               >
-                <option value="low">Faible</option>
-                <option value="normal">Normal</option>
-                <option value="high">Important</option>
-                <option value="urgent">Urgent</option>
+                <option value="">Une seule fois</option>
+                <option value="daily">Chaque jour</option>
+                <option value="weekly">Chaque semaine</option>
+                <option value="monthly">Chaque mois</option>
               </select>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Date limite
+            {/* Subtasks Upgrade */}
+            <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-800">
+              <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-2">
+                <List size={16} className="text-emerald-500" />
+                Sous-tâches secondaires
               </label>
-              <input
-                type="date"
-                value={formData.dueDate}
-                onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
-                className="input"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Récurrence
-            </label>
-            <select
-              value={formData.recurrence}
-              onChange={(e) => setFormData({ ...formData, recurrence: e.target.value })}
-              className="input"
-            >
-              <option value="">Aucune</option>
-              <option value="daily">Quotidienne</option>
-              <option value="weekly">Hebdomadaire</option>
-              <option value="monthly">Mensuelle</option>
-            </select>
-          </div>
-
-          {/* Sous-tâches */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Sous-tâches
-            </label>
-            <div className="flex space-x-2 mb-2">
-              <input
-                type="text"
-                value={newSubtask}
-                onChange={(e) => setNewSubtask(e.target.value)}
-                onKeyPress={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    handleAddSubtask();
-                  }
-                }}
-                className="input"
-                placeholder="Ajouter une sous-tâche"
-              />
-              <button
-                type="button"
-                onClick={handleAddSubtask}
-                className="btn btn-secondary"
-              >
-                Ajouter
-              </button>
-            </div>
-            {formData.subtasks.length > 0 && (
-              <div className="space-y-2">
-                {formData.subtasks.map((subtask, index) => (
-                  <div key={index} className="flex items-center justify-between bg-gray-50 dark:bg-gray-700 p-2 rounded">
-                    <span>{subtask.title}</span>
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveSubtask(index)}
-                      className="text-red-600 hover:text-red-800"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                ))}
+              <div className="flex gap-2 mb-4">
+                <input
+                  type="text"
+                  value={newSubtask}
+                  onChange={(e) => setNewSubtask(e.target.value)}
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleAddSubtask();
+                    }
+                  }}
+                  className="input py-2 flex-1"
+                  placeholder="Élément de liste..."
+                />
+                <button
+                  type="button"
+                  onClick={handleAddSubtask}
+                  className="btn btn-secondary h-full px-4 rounded-xl border-none bg-emerald-500 text-white hover:bg-emerald-600"
+                >
+                  <PlusCircle size={20} />
+                </button>
               </div>
-            )}
+
+              {formData.subtasks.length > 0 && (
+                <div className="space-y-2 max-h-[150px] overflow-y-auto pr-2 custom-scrollbar">
+                  {formData.subtasks.map((subtask, index) => (
+                    <div key={index} className="flex items-center justify-between bg-white dark:bg-slate-800 p-3 rounded-xl shadow-sm group">
+                      <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{subtask.title}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveSubtask(index)}
+                        className="p-1 px-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
+                      >
+                        🗑️
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
-          <div className="flex justify-end space-x-3 pt-4">
+          <div className="flex gap-3 pt-2">
             <button
               type="button"
               onClick={() => {
                 setIsModalOpen(false);
                 resetForm();
               }}
-              className="btn btn-secondary"
+              className="btn btn-secondary flex-1 py-3 rounded-xl border-none hover:bg-slate-100"
             >
-              Annuler
+              Ignorer
             </button>
-            <button type="submit" className="btn btn-primary">
-              {editingTask ? 'Modifier' : 'Créer'}
+            <button type="submit" className="btn btn-primary flex-[2] py-3 rounded-xl shadow-blue-500/25">
+              {editingTask ? 'Confirmer les modifications' : 'Créer l\'objectif'}
             </button>
           </div>
         </form>
