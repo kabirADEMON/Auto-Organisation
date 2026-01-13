@@ -20,17 +20,23 @@ import {
   LayoutDashboard
 } from 'lucide-react';
 
+/**
+ * Composant Dashboard
+ * Affiche une vue d'ensemble des statistiques de l'utilisateur (tâches et habitudes).
+ */
 const Dashboard = () => {
+  // États pour stocker les données brutes de Firestore
   const [tasks, setTasks] = useState([]);
   const [habits, setHabits] = useState([]);
-  const [period, setPeriod] = useState('week'); // week, month
+  const [period, setPeriod] = useState('week'); // Période d'affichage: week ou month
   const [userName, setUserName] = useState('');
 
+  // Initialisation et écoute temps réel des données
   useEffect(() => {
     if (!auth.currentUser) return;
     setUserName(auth.currentUser.displayName || 'Utilisateur');
 
-    // Écouter les tâches
+    // Écouter les tâches de l'utilisateur
     const tasksQuery = query(
       collection(db, 'tasks'),
       where('userId', '==', auth.currentUser.uid)
@@ -43,7 +49,7 @@ const Dashboard = () => {
       setTasks(tasksData);
     });
 
-    // Écouter les habitudes
+    // Écouter les habitudes de l'utilisateur
     const habitsQuery = query(
       collection(db, 'habits'),
       where('userId', '==', auth.currentUser.uid)
@@ -62,15 +68,24 @@ const Dashboard = () => {
     };
   }, []);
 
+  /**
+   * Calcule l'intervalle de temps (début/fin) pour la période sélectionnée
+   */
   const getPeriodRange = () => {
     const now = new Date();
     if (period === 'week') {
-      return { start: startOfWeek(now, { locale: fr, weekStartsOn: 1 }), end: endOfWeek(now, { locale: fr, weekStartsOn: 1 }) };
+      return {
+        start: startOfWeek(now, { locale: fr, weekStartsOn: 1 }),
+        end: endOfWeek(now, { locale: fr, weekStartsOn: 1 })
+      };
     } else {
       return { start: startOfMonth(now), end: endOfMonth(now) };
     }
   };
 
+  /**
+   * Filtre les tâches dues pour la journée actuelle
+   */
   const getTodayTasks = () => {
     const today = new Date();
     const todayStart = startOfDay(today);
@@ -83,6 +98,9 @@ const Dashboard = () => {
     });
   };
 
+  /**
+   * Filtre les tâches pour la période sélectionnée (semaine ou mois)
+   */
   const getPeriodTasks = () => {
     const { start, end } = getPeriodRange();
     return tasks.filter(task => {
@@ -92,6 +110,7 @@ const Dashboard = () => {
     });
   };
 
+  // Calcul des statistiques de base
   const todayTasks = getTodayTasks();
   const periodTasks = getPeriodTasks();
   const completedToday = todayTasks.filter(t => t.completed).length;
@@ -99,7 +118,9 @@ const Dashboard = () => {
   const totalPeriod = periodTasks.length;
   const productivityRate = totalPeriod > 0 ? Math.round((completedPeriod / totalPeriod) * 100) : 0;
 
-  // Statistiques habitudes
+  /**
+   * Calcule les statistiques par habitude (taux de réussite, série/streak en cours)
+   */
   const calculateHabitStats = () => {
     return habits.map(habit => {
       const completions = habit.completions || {};
@@ -107,12 +128,13 @@ const Dashboard = () => {
       const total = Object.keys(completions).length;
       const rate = total > 0 ? Math.round((completed / total) * 100) : 0;
 
-      // Calcul du streak
+      // Calcul du streak (série ininterrompue jusqu'à hier ou aujourd'hui)
       let streak = 0;
       const today = new Date();
       let currentDate = new Date(today);
 
       const todayStr = format(today, 'yyyy-MM-dd');
+      // Si aujourd'hui n'est pas complété, on commence à compter à partir d'hier
       if (completions[todayStr] !== true) {
         currentDate.setDate(currentDate.getDate() - 1);
       }
@@ -135,13 +157,14 @@ const Dashboard = () => {
     });
   };
 
+  // Agrégation des statistiques globales des habitudes
   const habitStats = calculateHabitStats();
   const avgHabitCompletion = habitStats.length > 0
     ? Math.round(habitStats.reduce((acc, h) => acc + h.completionRate, 0) / habitStats.length)
     : 0;
   const maxStreak = habitStats.length > 0 ? Math.max(...habitStats.map(h => h.streak)) : 0;
 
-  // Données pour graphiques
+  // Préparation des données pour le graphique camembert (priorités)
   const priorityData = [
     { name: 'Urgent', value: tasks.filter(t => t.priority === 'urgent' && !t.completed).length },
     { name: 'Important', value: tasks.filter(t => t.priority === 'high' && !t.completed).length },
@@ -151,6 +174,7 @@ const Dashboard = () => {
 
   const COLORS = ['#ef4444', '#f97316', '#3b82f6', '#94a3b8'];
 
+  // Préparation des données pour le graphique en barres (activité hebdo)
   const weeklyData = (() => {
     const { start } = getPeriodRange();
     const days = [];
@@ -171,6 +195,9 @@ const Dashboard = () => {
     return days;
   })();
 
+  /**
+   * Sous-composant pour les cartes statistiques stylisées
+   */
   const StatCard = ({ title, value, subtitle, icon: Icon, gradient, textColor }) => (
     <div className={`card overflow-hidden relative group p-6 shadow-xl border-none ${gradient}`}>
       <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 group-hover:opacity-20 transition-all">
@@ -189,6 +216,7 @@ const Dashboard = () => {
 
   return (
     <div className="space-y-10 page-transition pb-20">
+      {/* En-tête de Bienvenue */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
         <div>
           <div className="flex items-center gap-2 mb-2">
@@ -202,6 +230,7 @@ const Dashboard = () => {
           </p>
         </div>
 
+        {/* Sélecteur de période et Action rapide */}
         <div className="flex items-center gap-3">
           <div className="p-1.5 bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 flex">
             <button
@@ -223,20 +252,20 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      {/* Grille des indicateurs KPI */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
         <StatCard
-          title="Tâches du jour"
+          title="Tâches"
           value={`${completedToday}/${todayTasks.length}`}
-          subtitle={`${todayTasks.length > 0 ? Math.round((completedToday / todayTasks.length) * 100) : 0}% de succès`}
+          subtitle={`${todayTasks.length > 0 ? Math.round((completedToday / todayTasks.length) * 100) : 0}% success`}
           icon={CheckCircle2}
           gradient="bg-gradient-to-br from-emerald-500 to-teal-600"
           textColor="text-white"
         />
         <StatCard
-          title="Productivité"
+          title="Prod."
           value={`${productivityRate}%`}
-          subtitle={`${completedPeriod} validés ce ${period === 'week' ? 'sem' : 'mois'}`}
+          subtitle={`${completedPeriod} validés`}
           icon={Zap}
           gradient="bg-gradient-to-br from-blue-500 to-indigo-600"
           textColor="text-white"
@@ -250,78 +279,78 @@ const Dashboard = () => {
           textColor="text-white"
         />
         <StatCard
-          title="Point de Série"
+          title="Streak"
           value={`${maxStreak}j`}
-          subtitle="Meilleur streak"
+          subtitle="Top série"
           icon={Flame}
           gradient="bg-gradient-to-br from-orange-500 to-rose-600"
           textColor="text-white"
         />
       </div>
 
-      {/* Graphiques Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Graphique barres - Main Chart */}
-        <div className="lg:col-span-2 card p-8 border-slate-100 dark:border-slate-800 shadow-2xl">
-          <div className="flex items-center justify-between mb-10">
+      {/* Section des Graphiques de Performance */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
+        {/* Graphique d'Activité Temporelle */}
+        <div className="lg:col-span-2 card p-5 md:p-8 border-slate-100 dark:border-slate-800 shadow-2xl">
+          <div className="flex items-center justify-between mb-8 md:mb-10">
             <div>
-              <h3 className="text-xl font-black text-slate-800 dark:text-white flex items-center gap-2 italic">
+              <h3 className="text-lg md:text-xl font-black text-slate-800 dark:text-white flex items-center gap-2 italic">
                 <Activity size={20} className="text-blue-500" />
-                Flux d'Activité
+                Performance
               </h3>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Objectifs par jour</p>
+              <p className="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Activité hebdomadaire</p>
             </div>
           </div>
-          <div className="h-[350px] w-full">
+          <div className="h-[250px] md:h-[350px] w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={weeklyData} barGap={8}>
-                <CartesianGrid strokeDasharray="8 8" vertical={false} strokeOpacity={0.1} />
+              <BarChart data={weeklyData} barGap={4}>
+                <CartesianGrid strokeDasharray="8 8" vertical={false} strokeOpacity={0.05} />
                 <XAxis
                   dataKey="day"
                   axisLine={false}
                   tickLine={false}
-                  tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 800, textTransform: 'uppercase' }}
-                  dy={15}
+                  tick={{ fill: '#94a3b8', fontSize: 9, fontWeight: 800 }}
+                  dy={10}
                 />
                 <YAxis
                   axisLine={false}
                   tickLine={false}
-                  tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 800 }}
+                  tick={{ fill: '#94a3b8', fontSize: 9, fontWeight: 800 }}
                 />
                 <Tooltip
                   cursor={{ fill: '#F1F5F9', opacity: 0.1 }}
-                  contentStyle={{ borderRadius: '24px', border: 'none', boxShadow: '0 25px 50px -12px rgb(0 0 0 / 0.25)', fontWeight: 'bold' }}
+                  contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 25px 50px -12px rgb(0 0 0 / 0.1)', fontWeight: 'bold', fontSize: '12px' }}
                 />
-                <Bar dataKey="complétées" fill="#10b981" radius={[10, 10, 10, 10]} name="Fait" barSize={12} />
-                <Bar dataKey="totales" fill="#3b82f6" radius={[10, 10, 10, 10]} name="Total" barSize={12} />
+                <Bar dataKey="complétées" fill="#10b981" radius={[4, 4, 4, 4]} name="Fait" barSize={8} />
+                <Bar dataKey="totales" fill="#3b82f6" radius={[4, 4, 4, 4]} name="Total" barSize={8} />
               </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
 
-        {/* Priority Pie */}
-        <div className="card p-8 border-slate-100 dark:border-slate-800 shadow-2xl flex flex-col items-center">
-          <div className="w-full mb-8">
-            <h3 className="text-xl font-black text-slate-800 dark:text-white flex items-center gap-2 italic">
+        {/* Analyse des Priorités Actuelles */}
+        <div className="card p-5 md:p-8 border-slate-100 dark:border-slate-800 shadow-2xl flex flex-col items-center">
+          <div className="w-full mb-6 md:mb-8 text-center md:text-left">
+            <h3 className="text-lg md:text-xl font-black text-slate-800 dark:text-white flex items-center justify-center md:justify-start gap-2 italic">
               <Target size={20} className="text-rose-500" />
-              Focus Actuel
+              Focus
             </h3>
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Répartition des priorités</p>
+            <p className="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Répartition actuelle</p>
           </div>
 
-          <div className="h-[280px] w-full relative flex items-center justify-center">
+          <div className="h-[220px] md:h-[280px] w-full relative flex items-center justify-center">
             {priorityData.every(d => d.value === 0) ? (
               <div className="text-center">
-                <div className="w-16 h-16 bg-slate-50 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-300">
-                  <Sparkles size={32} />
+                <div className="w-12 h-12 bg-slate-50 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-300">
+                  <Sparkles size={24} />
                 </div>
-                <p className="text-slate-400 font-bold italic">Rien à afficher</p>
+                <p className="text-xs text-slate-400 font-bold italic">Aucune donnée</p>
               </div>
             ) : (
               <>
                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                  <span className="text-3xl font-black text-slate-800 dark:text-white">{tasks.filter(t => !t.completed).length}</span>
-                  <span className="text-[10px] font-black uppercase text-slate-400">À faire</span>
+                  <span className="text-2xl md:text-3xl font-black text-slate-800 dark:text-white">{tasks.filter(t => !t.completed).length}</span>
+                  <span className="text-[8px] md:text-[10px] font-black uppercase text-slate-400 tracking-tighter">À faire</span>
                 </div>
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
@@ -329,8 +358,8 @@ const Dashboard = () => {
                       data={priorityData}
                       cx="50%"
                       cy="50%"
-                      innerRadius={80}
-                      outerRadius={110}
+                      innerRadius={65}
+                      outerRadius={90}
                       paddingAngle={5}
                       dataKey="value"
                     >
@@ -339,7 +368,7 @@ const Dashboard = () => {
                       ))}
                     </Pie>
                     <Tooltip
-                      contentStyle={{ borderRadius: '24px', border: 'none', boxShadow: '0 25px 50px -12px rgb(0 0 0 / 0.25)', fontWeight: 'bold' }}
+                      contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 25px 50px -12px rgb(0 0 0 / 0.1)', fontWeight: 'bold', fontSize: '12px' }}
                     />
                   </PieChart>
                 </ResponsiveContainer>
@@ -349,17 +378,17 @@ const Dashboard = () => {
 
           <div className="w-full grid grid-cols-2 gap-2 mt-6">
             {priorityData.map((entry, index) => (
-              <div key={index} className="flex items-center gap-2 p-2 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800/50">
-                <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: COLORS[index % COLORS.length] }}></div>
-                <span className="text-[10px] font-black text-slate-600 dark:text-slate-400 uppercase truncate">{entry.name}</span>
-                <span className="ml-auto text-xs font-black text-slate-900 dark:text-white">{entry.value}</span>
+              <div key={index} className="flex items-center gap-2 p-1.5 md:p-2 bg-slate-50 dark:bg-slate-900/40 rounded-xl border border-slate-100 dark:border-slate-800">
+                <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: COLORS[index % COLORS.length] }}></div>
+                <span className="text-[9px] font-black text-slate-600 dark:text-slate-400 uppercase truncate">{entry.name}</span>
+                <span className="ml-auto text-[10px] font-black text-slate-900 dark:text-white">{entry.value}</span>
               </div>
             ))}
           </div>
         </div>
       </div>
 
-      {/* Quick Access Card */}
+      {/* Raccourcis de Vitesse / Accès Rapide */}
       <div className="card bg-slate-900 border-none p-8 text-white relative overflow-hidden group">
         <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-blue-600/20 to-transparent pointer-events-none"></div>
         <div className="absolute -top-24 -right-24 w-64 h-64 bg-blue-500/10 blur-3xl rounded-full group-hover:bg-blue-500/20 transition-all duration-700"></div>

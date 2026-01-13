@@ -55,8 +55,15 @@ const ForgotPassword = () => {
               Email envoyé!
             </h2>
             <p className="text-slate-600 dark:text-slate-400 mb-8">
-              Vérifiez votre boîte de réception et suivez les instructions pour réinitialiser votre mot de passe.
+              Vérifiez votre boîte de réception et suivez les instructions pour réinitialiser votre mot de passe.<strong>Si vous ne recevez pas l'email dans les 2 minutes, vérifiez votre dossier Indésirables (Spam)</strong>
             </p>
+
+            <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-900/40 rounded-xl p-4 mb-8 text-left">
+              <p className="text-xs text-amber-800 dark:text-amber-400 font-medium">
+                <strong>💡 Note professionnelle :</strong> Si vous ne recevez pas l'email dans les 2 minutes, vérifiez votre dossier <strong>Indésirables (Spam)</strong>. Pour un usage professionnel, vous pouvez personnaliser l'expéditeur dans votre console Firebase.
+              </p>
+            </div>
+
             <Link to="/login" className="btn btn-primary w-full justify-center">
               <ArrowLeft size={18} />
               Retour à la connexion

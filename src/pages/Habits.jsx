@@ -20,16 +20,25 @@ import {
   Sparkles
 } from 'lucide-react';
 
+/**
+ * Composant de gestion des Habitudes (Habits)
+ * Permet de suivre des routines quotidiennes sur une grille hebdomadaire.
+ */
 const Habits = () => {
+  // États
   const [habits, setHabits] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingHabit, setEditingHabit] = useState(null);
   const [formData, setFormData] = useState({
     name: '',
-    description: ''
+    description: '',
+    startTime: '',
+    endTime: ''
   });
+  // Date de référence pour la navigation hebdomadaire
   const [selectedDate, setSelectedDate] = useState(new Date());
 
+  // Récupération des habitudes en temps réel depuis Firestore
   useEffect(() => {
     if (!auth.currentUser) return;
 
@@ -49,6 +58,7 @@ const Habits = () => {
     return () => unsubscribe();
   }, []);
 
+  // Création ou modification d'une habitude
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -61,6 +71,7 @@ const Habits = () => {
       const habitData = {
         ...formData,
         userId: auth.currentUser.uid,
+        // Conserve les complétions existantes si on modifie
         completions: editingHabit?.completions || {},
         createdAt: editingHabit ? editingHabit.createdAt : Timestamp.now(),
         updatedAt: Timestamp.now()
@@ -82,6 +93,10 @@ const Habits = () => {
     }
   };
 
+  /**
+   * Alterne l'état (fait/non fait) pour une date précise
+   * Utilise la notation par point de Firestore pour mettre à jour un champ spécifique dans un Map.
+   */
   const handleToggle = async (habitId, dateStr) => {
     const habit = habits.find(h => h.id === habitId);
     if (!habit) return;
@@ -100,6 +115,7 @@ const Habits = () => {
     }
   };
 
+  // Suppression
   const handleDelete = async (habitId) => {
     if (!window.confirm('Êtes-vous sûr de vouloir supprimer cette habitude?')) return;
 
@@ -112,20 +128,28 @@ const Habits = () => {
     }
   };
 
+  // Edition
   const handleEdit = (habit) => {
     setEditingHabit(habit);
     setFormData({
       name: habit.name || '',
-      description: habit.description || ''
+      description: habit.description || '',
+      startTime: habit.startTime || '',
+      endTime: habit.endTime || ''
     });
     setIsModalOpen(true);
   };
 
   const resetForm = () => {
-    setFormData({ name: '', description: '' });
+    setFormData({ name: '', description: '', startTime: '', endTime: '' });
     setEditingHabit(null);
   };
 
+  /**
+   * Calcule la série actuelle (streak)
+   * On part d'aujourd'hui (ou d'hier si aujourd'hui n'est pas encore fait)
+   * et on remonte le temps tant que c'est coché.
+   */
   const calculateStreak = (habit) => {
     if (!habit.completions) return 0;
 
@@ -133,7 +157,7 @@ const Habits = () => {
     const today = new Date();
     let currentDate = new Date(today);
 
-    // Check if completed today, if not start from yesterday
+    // Vérifier si complété aujourd'hui, sinon commencer à compter d'hier
     const todayStr = format(today, 'yyyy-MM-dd');
     if (habit.completions[todayStr] !== true) {
       currentDate = subDays(today, 1);
@@ -152,6 +176,9 @@ const Habits = () => {
     return streak;
   };
 
+  /**
+   * Calcule le taux de réussite global
+   */
   const calculateCompletionRate = (habit) => {
     if (!habit.completions) return 0;
 
@@ -160,6 +187,7 @@ const Habits = () => {
     return completions.length > 0 ? (completed / completions.length) * 100 : 0;
   };
 
+  // Génération des jours de la semaine à afficher
   const weekDays = eachDayOfInterval({
     start: startOfWeek(selectedDate, { locale: fr, weekStartsOn: 1 }),
     end: endOfWeek(selectedDate, { locale: fr, weekStartsOn: 1 })
@@ -167,6 +195,7 @@ const Habits = () => {
 
   return (
     <div className="page-transition min-h-screen pb-20">
+      {/* En-tête */}
       <div className="flex flex-col md:flex-row md:items-end md:justify-between mb-8 gap-4">
         <div>
           <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tight italic">
@@ -190,7 +219,7 @@ const Habits = () => {
         </button>
       </div>
 
-      {/* Week Navigator */}
+      {/* Navigateur de Semaine */}
       <div className="card mb-8 p-3 flex items-center justify-between bg-white/50 dark:bg-slate-800/50 backdrop-blur-xl border-slate-100 dark:border-slate-800">
         <button
           onClick={() => {
@@ -210,6 +239,7 @@ const Habits = () => {
               {format(weekDays[0], 'dd MMM', { locale: fr })} - {format(weekDays[6], 'dd MMM yyyy', { locale: fr })}
             </span>
           </div>
+          {/* Badge semaine actuelle */}
           {isSameDay(startOfWeek(new Date(), { locale: fr, weekStartsOn: 1 }), startOfWeek(selectedDate, { locale: fr, weekStartsOn: 1 })) && (
             <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest mt-0.5">Semaine actuelle</span>
           )}
@@ -227,9 +257,10 @@ const Habits = () => {
         </button>
       </div>
 
-      {/* Habits List */}
+      {/* Liste des habitudes */}
       <div className="space-y-6">
         {habits.length === 0 ? (
+          // État vide
           <div className="card py-20 bg-slate-50 dark:bg-slate-900 border-dashed border-2 border-slate-200 dark:border-slate-800 flex flex-col items-center">
             <div className="w-16 h-16 bg-white dark:bg-slate-800 rounded-2xl flex items-center justify-center text-emerald-500 shadow-xl mb-4">
               <Sparkles size={32} />
@@ -245,14 +276,20 @@ const Habits = () => {
             return (
               <div key={habit.id} className="card p-0 overflow-hidden animate-in fade-in slide-in-from-bottom-4" style={{ animationDelay: `${habitIdx * 100}ms` }}>
                 <div className="p-6">
+                  {/* Infos Habitude */}
                   <div className="flex items-start justify-between mb-6">
                     <div className="flex items-center gap-4">
                       <div className="w-12 h-12 bg-emerald-50 dark:bg-emerald-900/20 rounded-2xl flex items-center justify-center text-emerald-600 dark:text-emerald-400">
                         <Target size={24} />
                       </div>
                       <div>
-                        <h3 className="text-xl font-black text-slate-900 dark:text-white leading-tight">
+                        <h3 className="text-xl font-black text-slate-900 dark:text-white leading-tight flex items-center gap-3">
                           {habit.name}
+                          {(habit.startTime || habit.endTime) && (
+                            <span className="text-[10px] bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full text-slate-500 font-black tracking-widest">
+                              {habit.startTime || '--:--'} - {habit.endTime || '--:--'}
+                            </span>
+                          )}
                         </h3>
                         {habit.description && (
                           <p className="text-slate-500 dark:text-slate-400 text-sm font-medium mt-0.5">{habit.description}</p>
@@ -260,6 +297,7 @@ const Habits = () => {
                       </div>
                     </div>
 
+                    {/* Stats et Actions */}
                     <div className="flex items-center gap-6">
                       <div className="hidden sm:flex items-center gap-4">
                         <div className="text-right">
@@ -289,22 +327,24 @@ const Habits = () => {
                     </div>
                   </div>
 
-                  {/* Week Grid */}
-                  <div className="grid grid-cols-7 gap-3 sm:gap-4">
-                    {weekDays.map((date) => {
-                      const dateStr = format(date, 'yyyy-MM-dd');
-                      const isChecked = habit.completions && habit.completions[dateStr] === true;
+                  {/* Grille Hebdomadaire (Chekboxes stylisées) */}
+                  <div className="overflow-x-auto no-scrollbar -mx-2 px-2">
+                    <div className="grid grid-cols-7 gap-2 sm:gap-4 min-w-[320px]">
+                      {weekDays.map((date) => {
+                        const dateStr = format(date, 'yyyy-MM-dd');
+                        const isChecked = habit.completions && habit.completions[dateStr] === true;
 
-                      return (
-                        <HabitCheckbox
-                          key={dateStr}
-                          habit={habit}
-                          date={date}
-                          isChecked={isChecked}
-                          onToggle={handleToggle}
-                        />
-                      );
-                    })}
+                        return (
+                          <HabitCheckbox
+                            key={dateStr}
+                            habit={habit}
+                            date={date}
+                            isChecked={isChecked}
+                            onToggle={handleToggle}
+                          />
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -313,7 +353,7 @@ const Habits = () => {
         )}
       </div>
 
-      {/* Modal Upgrade */}
+      {/* Modal de création/édition */}
       <Modal
         isOpen={isModalOpen}
         onClose={() => {
@@ -337,6 +377,32 @@ const Habits = () => {
                 required
                 placeholder="Méditation, Sport, Lecture..."
               />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
+                  Heure de début
+                </label>
+                <input
+                  type="time"
+                  value={formData.startTime}
+                  onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
+                  className="input font-medium"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
+                  Heure de fin
+                </label>
+                <input
+                  type="time"
+                  value={formData.endTime}
+                  onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
+                  className="input font-medium"
+                />
+              </div>
             </div>
 
             <div>

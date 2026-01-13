@@ -2,7 +2,12 @@ import React from 'react';
 import { format, isSameDay } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
+/**
+ * Composant de cellule de jour pour le calendrier (CalendarDay)
+ * Affiche un aperçu visuel (barres de progression, compteurs) des activités d'une date.
+ */
 const CalendarDay = ({ date, tasks = [], habits = [], onDayClick, isToday, isCurrentMonth }) => {
+  // Calcul des statistiques pour l'affichage visuel
   const completedTasks = tasks.filter(t => t.completed).length;
   const pendingTasks = tasks.length - completedTasks;
   const dayHabitCount = habits.length;
@@ -18,10 +23,12 @@ const CalendarDay = ({ date, tasks = [], habits = [], onDayClick, isToday, isCur
           : 'bg-white dark:bg-slate-900/40 border-slate-100'}
       `}
     >
+      {/* Numéro du jour */}
       <span className={`text-sm font-black transition-colors ${isToday ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white'}`}>
         {format(date, 'd')}
       </span>
 
+      {/* Barres de progression visuelles (Tâches) */}
       <div className="w-full space-y-1">
         {pendingTasks > 0 && (
           <div className="w-full h-1.5 bg-red-400/20 rounded-full overflow-hidden">
@@ -35,6 +42,7 @@ const CalendarDay = ({ date, tasks = [], habits = [], onDayClick, isToday, isCur
         )}
       </div>
 
+      {/* Badges numériques (Tâches et Habitudes) */}
       <div className="mt-auto w-full flex flex-wrap gap-1">
         {tasks.length > 0 && (
           <div className="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 rounded font-black text-[9px] uppercase tracking-tighter text-slate-500">
@@ -48,6 +56,7 @@ const CalendarDay = ({ date, tasks = [], habits = [], onDayClick, isToday, isCur
         )}
       </div>
 
+      {/* Point indicateur pour aujourd'hui */}
       {isToday && (
         <div className="absolute top-2 right-2 w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse"></div>
       )}

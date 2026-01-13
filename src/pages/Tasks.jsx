@@ -17,38 +17,52 @@ import {
   PlusCircle
 } from 'lucide-react';
 
+/**
+ * Composant de gestion des tâches (Tasks)
+ * Permet de visualiser, créer, modifier et supprimer des tâches.
+ * Intègre des fonctionnalités de recherche, filtrage et sous-tâches.
+ */
 const Tasks = () => {
+  // États pour les données et filtres
   const [tasks, setTasks] = useState([]);
-  const [filter, setFilter] = useState('all'); // all, active, completed
-  const [priorityFilter, setPriorityFilter] = useState('all');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [filter, setFilter] = useState('all'); // Filtre statut: all, active, completed
+  const [priorityFilter, setPriorityFilter] = useState('all'); // Filtre par priorité
+  const [searchQuery, setSearchQuery] = useState(''); // Recherche textuelle
+
+  // États pour le formulaire et le modal
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingTask, setEditingTask] = useState(null);
+  const [editingTask, setEditingTask] = useState(null); // Tâche en cours d'édition
   const [formData, setFormData] = useState({
     title: '',
     description: '',
     priority: 'normal',
     dueDate: '',
+    startTime: '',
+    endTime: '',
     recurrence: '',
     subtasks: []
   });
   const [newSubtask, setNewSubtask] = useState('');
 
+  // Récupération des données en temps réel depuis Firestore
   useEffect(() => {
     if (!auth.currentUser) return;
 
+    // Requête pour les tâches de l'utilisateur connecté
     const q = query(
       collection(db, 'tasks'),
       where('userId', '==', auth.currentUser.uid)
     );
 
+    // Écouteur en temps réel
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const tasksData = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       }));
+
+      // Tri par statut (non complété en premier)
       setTasks(tasksData.sort((a, b) => {
-        // Sort by completion then by priority or date
         if (a.completed !== b.completed) return a.completed ? 1 : -1;
         return 0;
       }));
@@ -57,6 +71,7 @@ const Tasks = () => {
     return () => unsubscribe();
   }, []);
 
+  // Soumission du formulaire (Création ou Mise à jour)
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -72,13 +87,16 @@ const Tasks = () => {
         completed: false,
         createdAt: editingTask ? editingTask.createdAt : Timestamp.now(),
         updatedAt: Timestamp.now(),
+        // Conversion de la date string vers Firebase Timestamp
         dueDate: formData.dueDate ? Timestamp.fromDate(new Date(formData.dueDate)) : null
       };
 
       if (editingTask) {
+        // Mise à jour existante
         await updateDoc(doc(db, 'tasks', editingTask.id), taskData);
         showToast('Tâche mise à jour', 'success');
       } else {
+        // Création nouvelle tâche
         await addDoc(collection(db, 'tasks'), taskData);
         showToast('Tâche créée', 'success');
       }
@@ -91,6 +109,7 @@ const Tasks = () => {
     }
   };
 
+  // Basculer le statut complété d'une tâche
   const handleToggle = async (taskId) => {
     const task = tasks.find(t => t.id === taskId);
     if (!task) return;
@@ -106,6 +125,7 @@ const Tasks = () => {
     }
   };
 
+  // Suppression d'une tâche
   const handleDelete = async (taskId) => {
     if (!window.confirm('Êtes-vous sûr de vouloir supprimer cette tâche?')) return;
 
@@ -118,19 +138,24 @@ const Tasks = () => {
     }
   };
 
+  // Préparation de l'édition (remplit le formulaire avec les données de la tâche)
   const handleEdit = (task) => {
     setEditingTask(task);
     setFormData({
       title: task.title || '',
       description: task.description || '',
       priority: task.priority || 'normal',
+      // Formatage de la date pour l'input HTML type="date"
       dueDate: task.dueDate ? (task.dueDate.toDate ? task.dueDate.toDate().toISOString().split('T')[0] : new Date(task.dueDate).toISOString().split('T')[0]) : '',
+      startTime: task.startTime || '',
+      endTime: task.endTime || '',
       recurrence: task.recurrence || '',
       subtasks: task.subtasks || []
     });
     setIsModalOpen(true);
   };
 
+  // Ajouter une sous-tâche au formulaire local
   const handleAddSubtask = () => {
     if (!newSubtask.trim()) return;
     setFormData({
@@ -140,6 +165,7 @@ const Tasks = () => {
     setNewSubtask('');
   };
 
+  // Supprimer une sous-tâche du formulaire local
   const handleRemoveSubtask = (index) => {
     setFormData({
       ...formData,
@@ -147,12 +173,15 @@ const Tasks = () => {
     });
   };
 
+  // Réinitialisation du formulaire
   const resetForm = () => {
     setFormData({
       title: '',
       description: '',
       priority: 'normal',
       dueDate: '',
+      startTime: '',
+      endTime: '',
       recurrence: '',
       subtasks: []
     });
@@ -160,6 +189,7 @@ const Tasks = () => {
     setNewSubtask('');
   };
 
+  // Filtrage des tâches selon la recherche et les filtres actifs
   const filteredTasks = tasks.filter(task => {
     const matchesSearch = task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (task.description && task.description.toLowerCase().includes(searchQuery.toLowerCase()));
@@ -175,6 +205,7 @@ const Tasks = () => {
 
   return (
     <div className="page-transition min-h-screen pb-20">
+      {/* En-tête de la page */}
       <div className="flex flex-col md:flex-row md:items-end md:justify-between mb-8 gap-4">
         <div>
           <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tight italic">
@@ -198,8 +229,9 @@ const Tasks = () => {
         </button>
       </div>
 
-      {/* Control Bar */}
-      <div className="card mb-8 p-3 flex flex-col md:flex-row gap-4 items-center bg-white/50 dark:bg-slate-800/50 backdrop-blur-xl border-slate-100 dark:border-slate-800">
+      {/* Barre de contrôle (Recherche et Filtres) */}
+      <div className="card mb-8 p-2 md:p-3 flex flex-col md:flex-row gap-3 md:gap-4 items-center bg-white/50 dark:bg-slate-800/50 backdrop-blur-xl border-slate-100 dark:border-slate-800 shadow-sm">
+        {/* Recherche */}
         <div className="relative flex-1 w-full">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
           <input
@@ -207,12 +239,13 @@ const Tasks = () => {
             placeholder="Rechercher une tâche..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-11 pr-4 py-2.5 bg-slate-100/50 dark:bg-slate-700/50 border-none rounded-xl focus:ring-2 focus:ring-blue-500/50 transition-all font-medium text-sm"
+            className="input pl-11 pr-4 py-2.5 bg-white/50 dark:bg-slate-900/40 border-slate-100 dark:border-slate-800 rounded-xl"
           />
         </div>
 
-        <div className="flex items-center gap-2 w-full md:w-auto">
-          <div className="flex bg-slate-100/50 dark:bg-slate-700/50 p-1 rounded-xl w-full md:w-auto">
+        {/* Sélecteurs de filtres */}
+        <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
+          <div className="flex overflow-x-auto no-scrollbar bg-slate-100/50 dark:bg-slate-900/40 p-1 rounded-xl w-full sm:w-auto border border-slate-200/50 dark:border-slate-800/50">
             {[
               { id: 'all', label: 'Toutes', icon: LayoutGrid },
               { id: 'active', label: 'En cours', icon: Circle },
@@ -221,10 +254,10 @@ const Tasks = () => {
               <button
                 key={item.id}
                 onClick={() => setFilter(item.id)}
-                className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${filter === item.id ? 'bg-white dark:bg-slate-600 text-blue-600 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                className={`flex items-center justify-center gap-2 px-3 py-1.5 rounded-lg text-[10px] md:text-xs font-black uppercase tracking-widest transition-all flex-1 sm:flex-none whitespace-nowrap ${filter === item.id ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
               >
                 <item.icon size={14} />
-                <span className="hidden sm:inline">{item.label}</span>
+                <span>{item.label}</span>
               </button>
             ))}
           </div>
@@ -232,9 +265,9 @@ const Tasks = () => {
           <select
             value={priorityFilter}
             onChange={(e) => setPriorityFilter(e.target.value)}
-            className="bg-slate-100/50 dark:bg-slate-700/50 border-none rounded-xl py-2 px-4 text-xs font-bold text-slate-500 focus:ring-2 focus:ring-blue-500/50"
+            className="w-full sm:w-auto bg-slate-100/50 dark:bg-slate-900/40 border border-slate-200/50 dark:border-slate-800/50 rounded-xl py-2 px-4 text-[10px] md:text-xs font-black uppercase tracking-widest text-slate-500 focus:ring-2 focus:ring-blue-500/50 outline-none"
           >
-            <option value="all">Filtre priorité</option>
+            <option value="all">Priorité (Toutes)</option>
             <option value="urgent">🔴 Urgent</option>
             <option value="high">Important</option>
             <option value="normal">Normal</option>
@@ -243,9 +276,10 @@ const Tasks = () => {
         </div>
       </div>
 
-      {/* Grid of Tasks */}
+      {/* Grille des tâches */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredTasks.length === 0 ? (
+          // État vide
           <div className="col-span-full card py-20 bg-slate-50 dark:bg-slate-900 border-dashed border-2 border-slate-200 dark:border-slate-800 flex flex-col items-center">
             <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center text-slate-400 mb-4">
               <Search size={32} />
@@ -254,6 +288,7 @@ const Tasks = () => {
             <p className="text-slate-400 text-sm mt-1">Essayez de modifier vos filtres ou lancez une nouvelle recherche</p>
           </div>
         ) : (
+          // Liste des tâches (TaskCard)
           filteredTasks.map((task, index) => (
             <div key={task.id} className="animate-in fade-in slide-in-from-bottom-4" style={{ animationDelay: `${index * 50}ms` }}>
               <TaskCard
@@ -267,7 +302,7 @@ const Tasks = () => {
         )}
       </div>
 
-      {/* Modal Overlay Upgrade */}
+      {/* Modal de création/édition */}
       <Modal
         isOpen={isModalOpen}
         onClose={() => {
@@ -279,6 +314,7 @@ const Tasks = () => {
       >
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-4">
+            {/* Titre */}
             <div>
               <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2 flex items-center gap-2">
                 <Tag size={16} className="text-blue-500" />
@@ -294,6 +330,7 @@ const Tasks = () => {
               />
             </div>
 
+            {/* Description */}
             <div>
               <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
                 Détails supplémentaires
@@ -306,6 +343,7 @@ const Tasks = () => {
               />
             </div>
 
+            {/* Priorité et Échéance */}
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
@@ -337,6 +375,34 @@ const Tasks = () => {
               </div>
             </div>
 
+            {/* Plage horaire */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
+                  Heure de début
+                </label>
+                <input
+                  type="time"
+                  value={formData.startTime}
+                  onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
+                  className="input font-medium"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
+                  Heure de fin
+                </label>
+                <input
+                  type="time"
+                  value={formData.endTime}
+                  onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
+                  className="input font-medium"
+                />
+              </div>
+            </div>
+
+            {/* Récurrence */}
             <div>
               <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2 flex items-center gap-2">
                 <LayoutGrid size={16} className="text-violet-500" />
@@ -354,7 +420,7 @@ const Tasks = () => {
               </select>
             </div>
 
-            {/* Subtasks Upgrade */}
+            {/* Section Sous-tâches */}
             <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-800">
               <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-2">
                 <List size={16} className="text-emerald-500" />
@@ -383,6 +449,7 @@ const Tasks = () => {
                 </button>
               </div>
 
+              {/* Liste des sous-tâches ajoutées */}
               {formData.subtasks.length > 0 && (
                 <div className="space-y-2 max-h-[150px] overflow-y-auto pr-2 custom-scrollbar">
                   {formData.subtasks.map((subtask, index) => (
@@ -402,6 +469,7 @@ const Tasks = () => {
             </div>
           </div>
 
+          {/* Actions du formulaire */}
           <div className="flex gap-3 pt-2">
             <button
               type="button"

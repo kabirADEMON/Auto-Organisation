@@ -15,19 +15,27 @@ import {
   Activity
 } from 'lucide-react';
 
+/**
+ * Composant Calendrier (Calendar)
+ * Offre une vue mensuelle globale des tâches et des habitudes.
+ */
 const Calendar = () => {
-  const [currentDate, setCurrentDate] = useState(new Date());
+  // États de navigation et données
+  const [currentDate, setCurrentDate] = useState(new Date()); // Mois affiché actuellement
   const [tasks, setTasks] = useState([]);
   const [habits, setHabits] = useState([]);
+
+  // États pour le modal de détails du jour
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedDayTasks, setSelectedDayTasks] = useState([]);
   const [selectedDayHabits, setSelectedDayHabits] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
+  // Synchronisation des données en temps réel
   useEffect(() => {
     if (!auth.currentUser) return;
 
-    // Écouter les tâches
+    // Écouter les tâches de l'utilisateur
     const tasksQuery = query(
       collection(db, 'tasks'),
       where('userId', '==', auth.currentUser.uid)
@@ -40,7 +48,7 @@ const Calendar = () => {
       setTasks(tasksData);
     });
 
-    // Écouter les habitudes
+    // Écouter les habitudes de l'utilisateur
     const habitsQuery = query(
       collection(db, 'habits'),
       where('userId', '==', auth.currentUser.uid)
@@ -59,6 +67,9 @@ const Calendar = () => {
     };
   }, []);
 
+  /**
+   * Calcul des jours à afficher dans la grille (inclut les jours de débordement de la semaine)
+   */
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
   const calendarStart = startOfWeek(monthStart, { locale: fr, weekStartsOn: 1 });
@@ -69,6 +80,9 @@ const Calendar = () => {
     end: calendarEnd
   });
 
+  /**
+   * Gère le clic sur un jour pour afficher ses détails
+   */
   const handleDayClick = (date) => {
     setSelectedDate(date);
     const dayTasks = getTasksForDay(date);
@@ -79,6 +93,9 @@ const Calendar = () => {
     setIsModalOpen(true);
   };
 
+  /**
+   * Filtre les tâches ayant une échéance au jour spécifié
+   */
   const getTasksForDay = (date) => {
     return tasks.filter(task => {
       if (!task.dueDate) return false;
@@ -87,6 +104,9 @@ const Calendar = () => {
     });
   };
 
+  /**
+   * Filtre les habitudes marquées comme validées au jour spécifié
+   */
   const getHabitsForDay = (date) => {
     const dateStr = format(date, 'yyyy-MM-dd');
     return habits.filter(habit => {
@@ -94,6 +114,7 @@ const Calendar = () => {
     });
   };
 
+  // Actions de navigation
   const goToPreviousMonth = () => setCurrentDate(subMonths(currentDate, 1));
   const goToNextMonth = () => setCurrentDate(addMonths(currentDate, 1));
   const goToToday = () => setCurrentDate(new Date());
@@ -102,6 +123,7 @@ const Calendar = () => {
 
   return (
     <div className="page-transition min-h-screen pb-20">
+      {/* En-tête */}
       <div className="flex flex-col md:flex-row md:items-end md:justify-between mb-8 gap-4">
         <div>
           <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tight italic">
@@ -120,8 +142,9 @@ const Calendar = () => {
         </button>
       </div>
 
-      {/* Month Navigator & Calendar Grid */}
+      {/* Grille de Calendrier principale */}
       <div className="card p-0 overflow-hidden border-slate-100 dark:border-slate-800 shadow-2xl">
+        {/* Barre de navigation du mois */}
         <div className="p-6 bg-slate-50 dark:bg-slate-800/30 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
           <button onClick={goToPreviousMonth} className="p-2 hover:bg-white dark:hover:bg-slate-700 rounded-xl transition-all shadow-sm">
             <ChevronLeft size={24} />
@@ -134,14 +157,16 @@ const Calendar = () => {
           </button>
         </div>
 
-        <div className="p-4 sm:p-6">
-          <div className="grid grid-cols-7 gap-1 sm:gap-2">
+        <div className="p-2 sm:p-6 overflow-x-auto no-scrollbar">
+          <div className="grid grid-cols-7 gap-1 min-w-[320px] sm:min-w-full">
+            {/* Jours de la semaine */}
             {weekDays.map((day) => (
-              <div key={day} className="text-center font-black text-[10px] uppercase tracking-widest text-slate-400 py-3">
+              <div key={day} className="text-center font-black text-[9px] sm:text-[10px] uppercase tracking-widest text-slate-400 py-3">
                 {day}
               </div>
             ))}
 
+            {/* Cellules des jours */}
             {calendarDays.map((date) => (
               <CalendarDay
                 key={date.toISOString()}
@@ -157,7 +182,7 @@ const Calendar = () => {
         </div>
       </div>
 
-      {/* Legend & Summary */}
+      {/* Légende et Statistiques Rapides */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
         <div className="md:col-span-2 card bg-slate-50/50 dark:bg-slate-800/20 border-slate-100 dark:border-slate-800">
           <h3 className="font-black text-sm uppercase tracking-widest text-slate-400 mb-4 flex items-center gap-2">
@@ -184,7 +209,10 @@ const Calendar = () => {
           <h3 className="font-bold text-white/80 text-xs uppercase tracking-widest mb-2">Total ce mois</h3>
           <div className="flex items-end justify-between">
             <div>
-              <div className="text-3xl font-black leading-none">{tasks.filter(t => isSameMonth(t.dueDate?.toDate ? t.dueDate.toDate() : new Date(t.dueDate), currentDate)).length}</div>
+              {/* Note: Le calcul ici est fait à chaque rendu sur les tâches du mois affiché */}
+              <div className="text-3xl font-black leading-none">
+                {tasks.filter(t => t.dueDate && isSameMonth(t.dueDate?.toDate ? t.dueDate.toDate() : new Date(t.dueDate), currentDate)).length}
+              </div>
               <div className="text-[10px] font-bold uppercase opacity-80 mt-1">Objectifs</div>
             </div>
             <div className="text-right">
@@ -195,13 +223,14 @@ const Calendar = () => {
         </div>
       </div>
 
-      {/* Modal Upgrade */}
+      {/* Modal d'aperçu d'un jour spécifique */}
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         title={selectedDate ? format(selectedDate, 'EEEE dd MMMM', { locale: fr }) : 'Détails du jour'}
       >
         <div className="space-y-6">
+          {/* Section Objectifs */}
           <div>
             <h4 className="flex items-center gap-2 text-sm font-black uppercase tracking-widest text-slate-400 mb-4">
               <Clock size={16} className="text-blue-500" />
@@ -233,6 +262,7 @@ const Calendar = () => {
             )}
           </div>
 
+          {/* Section Routines */}
           <div>
             <h4 className="flex items-center gap-2 text-sm font-black uppercase tracking-widest text-slate-400 mb-4">
               <Activity size={16} className="text-emerald-500" />

@@ -14,9 +14,17 @@ import {
   Flag
 } from 'lucide-react';
 
+/**
+ * Composant de carte de tâche (TaskCard)
+ * Affiche les détails d'une tâche, gère son statut et l'extension des sous-tâches.
+ */
 const TaskCard = ({ task, onToggle, onEdit, onDelete, onAddSubtask }) => {
+  // État local pour l'affichage des sous-tâches
   const [isExpanded, setIsExpanded] = useState(false);
 
+  /**
+   * Mappe le niveau de priorité vers des styles et icônes spécifiques
+   */
   const getPriorityInfo = (priority) => {
     switch (priority) {
       case 'urgent':
@@ -30,12 +38,16 @@ const TaskCard = ({ task, onToggle, onEdit, onDelete, onAddSubtask }) => {
     }
   };
 
+  /**
+   * Formate proprement le Timestamp Firebase ou l'objet Date
+   */
   const formatDate = (timestamp) => {
     if (!timestamp) return null;
     const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
     return format(date, 'dd MMM yyyy', { locale: fr });
   };
 
+  // Vérifie si la tâche est en retard
   const isOverdue = task.dueDate &&
     (task.dueDate.toDate ? task.dueDate.toDate() : new Date(task.dueDate)) < new Date() &&
     !task.completed;
@@ -44,11 +56,12 @@ const TaskCard = ({ task, onToggle, onEdit, onDelete, onAddSubtask }) => {
 
   return (
     <div className={`card group p-0 overflow-hidden relative ${task.completed ? 'opacity-70 grayscale-[0.3]' : ''} ${isOverdue ? 'ring-2 ring-red-500/50' : ''}`}>
-      {/* Top indicator bar based on priority */}
+      {/* Barre supérieure indicatrice de priorité */}
       <div className={`h-1.5 w-full ${priority.bg.replace('/20', '')}`}></div>
 
       <div className="p-5">
         <div className="flex items-start gap-4">
+          {/* Checkbox stylisée */}
           <div className="relative flex items-center justify-center">
             <input
               type="checkbox"
@@ -63,12 +76,14 @@ const TaskCard = ({ task, onToggle, onEdit, onDelete, onAddSubtask }) => {
             )}
           </div>
 
+          {/* Contenu de la tâche */}
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-2">
               <h3 className={`text-lg font-bold truncate transition-all ${task.completed ? 'line-through text-slate-500 italic' : 'text-slate-800 dark:text-slate-100'}`}>
                 {task.title}
               </h3>
 
+              {/* Actions au survol */}
               <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                 {onAddSubtask && (
                   <button onClick={() => onAddSubtask(task.id)} className="p-1.5 text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all" title="Sous-tâche">
@@ -94,6 +109,7 @@ const TaskCard = ({ task, onToggle, onEdit, onDelete, onAddSubtask }) => {
               </p>
             )}
 
+            {/* Badges d'information */}
             <div className="flex flex-wrap items-center gap-3 mt-4">
               <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${priority.bg} ${priority.color}`}>
                 <Flag size={12} />
@@ -117,6 +133,14 @@ const TaskCard = ({ task, onToggle, onEdit, onDelete, onAddSubtask }) => {
                 </span>
               )}
 
+              {(task.startTime || task.endTime) && (
+                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg text-[10px] font-black tracking-widest bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400">
+                  <Clock size={12} />
+                  {task.startTime || '--:--'} - {task.endTime || '--:--'}
+                </span>
+              )}
+
+              {/* Compteur de sous-tâches */}
               {task.subtasks && task.subtasks.length > 0 && (
                 <button
                   onClick={() => setIsExpanded(!isExpanded)}
@@ -130,7 +154,7 @@ const TaskCard = ({ task, onToggle, onEdit, onDelete, onAddSubtask }) => {
           </div>
         </div>
 
-        {/* Expanded Content - Subtasks */}
+        {/* Liste détaillée des sous-tâches (Si étendu) */}
         {isExpanded && task.subtasks && task.subtasks.length > 0 && (
           <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 space-y-2 animate-in slide-in-from-top-2 duration-300">
             {task.subtasks.map((subtask, index) => (

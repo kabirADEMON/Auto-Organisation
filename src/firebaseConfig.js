@@ -14,6 +14,7 @@ import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getMessaging, getToken, onMessage, isSupported } from 'firebase/messaging';
+import { getStorage } from 'firebase/storage';
 
 // Configuration Firebase
 // REMPLACEZ ces valeurs par votre propre configuration Firebase
@@ -24,8 +25,6 @@ const firebaseConfig = {
   storageBucket: "projetgestion-9b52f.firebasestorage.app",
   messagingSenderId: "714877031996",
   appId: "1:714877031996:web:5ca0f56cea1b42f13a1539",
-  // Ajoutez votre clé publique VAPID ici (optionnel, peut être défini plus tard)
-  // vapidKey: "YOUR_VAPID_PUBLIC_KEY"
 };
 
 // Initialiser Firebase
@@ -34,6 +33,7 @@ const app = initializeApp(firebaseConfig);
 // Initialiser les services
 export const auth = getAuth(app);
 export const db = getFirestore(app);
+export const storage = getStorage(app);
 
 // Configuration de messaging (FCM)
 let messaging = null;
@@ -66,16 +66,15 @@ export const requestNotificationPermission = async () => {
   try {
     // Demander la permission
     const permission = await Notification.requestPermission();
-    
+
     if (permission === 'granted') {
       console.log('Permission de notification accordée');
-      
+
       // Obtenir le token FCM
-      // IMPORTANT: La clé VAPID doit être configurée dans Firebase Console > Project Settings > Cloud Messaging
       const token = await getToken(messaging, {
         vapidKey: firebaseConfig.vapidKey || 'YOUR_VAPID_PUBLIC_KEY'
       });
-      
+
       if (token) {
         console.log('Token FCM obtenu:', token);
         return token;
@@ -99,7 +98,7 @@ export const requestNotificationPermission = async () => {
  */
 export const onMessageListener = (callback) => {
   if (!messaging) {
-    return () => {};
+    return () => { };
   }
 
   return onMessage(messaging, (payload) => {

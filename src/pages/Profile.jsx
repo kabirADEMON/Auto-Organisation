@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
-import { updateProfile } from 'firebase/auth';
-import { db, auth, requestNotificationPermission, onMessageListener } from '../firebaseConfig';
+import { updateProfile, updateEmail, verifyBeforeUpdateEmail } from 'firebase/auth';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { db, auth, storage, requestNotificationPermission, onMessageListener } from '../firebaseConfig';
 import { showToast } from '../components/ToastContainer';
 import { useTheme } from '../contexts/ThemeContext';
 import {
@@ -14,21 +15,33 @@ import {
   Save,
   Fingerprint,
   Zap,
-  Camera
+  Camera,
+  Loader2
 } from 'lucide-react';
 
+/**
+ * Composant de Profil Utilisateur (Profile)
+ * Gère les informations personnelles, les préférences de thème et de notifications.
+ */
 const Profile = () => {
+  // États de données et chargement
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef(null);
+
+  // État du formulaire
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     notifications: false
   });
+
   const [notificationPermission, setNotificationPermission] = useState('default');
   const { theme, toggleTheme } = useTheme();
 
+  // Chargement initial des données depuis Firebase Auth et Firestore
   useEffect(() => {
     if (!auth.currentUser) return;
 
@@ -44,6 +57,7 @@ const Profile = () => {
             notifications: data.preferences?.notifications !== false
           });
         } else {
+          // Cas où le document user n'existe pas encore
           setFormData({
             name: auth.currentUser.displayName || '',
             email: auth.currentUser.email || '',
@@ -60,10 +74,12 @@ const Profile = () => {
 
     loadUserData();
 
+    // Vérifier les permissions de notification navigateur
     if ('Notification' in window) {
       setNotificationPermission(Notification.permission);
     }
 
+    // Écouteur pour les notifications FCM entrantes
     const unsubscribe = onMessageListener((payload) => {
       showToast(payload.notification?.title || 'Nouvelle notification', 'info');
     });
@@ -75,17 +91,84 @@ const Profile = () => {
     };
   }, []);
 
+  /**
+   * Gère le changement d'image de profil
+   */
+  const handleImageChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Validation du type de fichier
+    if (!file.type.startsWith('image/')) {
+      showToast('Veuillez sélectionner une image valide', 'error');
+      return;
+    }
+
+    // Validation de la taille (max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      showToast('L\'image est trop volumineuse (max 2MB)', 'error');
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const storageRef = ref(storage, `avatars/${auth.currentUser.uid}`);
+      await uploadBytes(storageRef, file);
+      const downloadURL = await getDownloadURL(storageRef);
+
+      // Mettre à jour le profil Auth
+      await updateProfile(auth.currentUser, { photoURL: downloadURL });
+
+      // Mettre à jour Firestore
+      await updateDoc(doc(db, 'users', auth.currentUser.uid), {
+        photoURL: downloadURL,
+        updatedAt: new Date()
+      });
+
+      showToast('Photo de profil mise à jour', 'success');
+    } catch (error) {
+      console.error('Erreur upload:', error);
+      showToast('Erreur lors du téléchargement de l\'image', 'error');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  /**
+   * Sauvegarde les modifications (Auth DisplayName + Firestore Doc)
+   */
   const handleSave = async () => {
     if (!auth.currentUser) return;
 
     setSaving(true);
     try {
+      // 1. Mettre à jour l'email si modifié (nécessite une nouvelle vérification ou ré-authentification récente)
+      if (formData.email !== auth.currentUser.email) {
+        try {
+          // Utilise verifyBeforeUpdateEmail (recommandé v9+) pour envoyer un mail de confirmation
+          await verifyBeforeUpdateEmail(auth.currentUser, formData.email);
+          showToast('Un email de vérification a été envoyé à la nouvelle adresse', 'info');
+        } catch (emailError) {
+          console.error('Erreur email:', emailError);
+          if (emailError.code === 'auth/requires-recent-login') {
+            showToast('Veuillez vous reconnecter pour changer votre email', 'warning');
+          } else {
+            showToast('Erreur lors du changement d\'email', 'error');
+          }
+          setSaving(false);
+          return;
+        }
+      }
+
+      // 2. Mettre à jour le profil d'authentification si le nom a changé
       if (formData.name !== auth.currentUser.displayName) {
         await updateProfile(auth.currentUser, { displayName: formData.name });
       }
 
+      // 3. Mettre à jour les préférences dans Firestore
       await updateDoc(doc(db, 'users', auth.currentUser.uid), {
         name: formData.name,
+        email: formData.email,
         preferences: {
           theme: theme,
           notifications: formData.notifications
@@ -102,10 +185,14 @@ const Profile = () => {
     }
   };
 
+  /**
+   * Gère la demande d'autorisation pour les notifications Push (FCM)
+   */
   const handleRequestNotifications = async () => {
     try {
       const token = await requestNotificationPermission();
       if (token) {
+        // Enregistrer le token FCM dans Firestore pour pouvoir envoyer des messages
         await updateDoc(doc(db, 'users', auth.currentUser.uid), {
           fcmToken: token,
           notificationPermission: 'granted'
@@ -122,6 +209,7 @@ const Profile = () => {
     }
   };
 
+  // État de chargement global
   if (loading) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
@@ -137,13 +225,34 @@ const Profile = () => {
 
   return (
     <div className="page-transition max-w-4xl mx-auto pb-20">
+      {/* En-tête de profil */}
       <div className="flex flex-col md:flex-row items-center gap-8 mb-12">
         <div className="relative group">
-          <div className="w-32 h-32 rounded-3xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-4xl font-black shadow-2xl shadow-blue-500/20 group-hover:scale-105 transition-transform">
-            {formData.name.charAt(0).toUpperCase() || 'U'}
-            <div className="absolute -bottom-2 -right-2 p-2 bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-100 dark:border-slate-700 text-slate-400 group-hover:text-blue-500 transition-colors">
-              <Camera size={20} />
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleImageChange}
+            accept="image/*"
+            className="hidden"
+          />
+          <div
+            onClick={() => !uploading && fileInputRef.current.click()}
+            className={`w-32 h-32 rounded-3xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-4xl font-black shadow-2xl shadow-blue-500/20 group-hover:scale-105 transition-transform cursor-pointer overflow-hidden relative`}
+          >
+            {uploading ? (
+              <Loader2 className="animate-spin" size={40} />
+            ) : auth.currentUser?.photoURL ? (
+              <img src={auth.currentUser.photoURL} alt="Avatar" className="w-full h-full object-cover" />
+            ) : (
+              formData.name.charAt(0).toUpperCase() || 'U'
+            )}
+
+            <div className={`absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity ${uploading ? 'opacity-100' : ''}`}>
+              <Camera size={24} className="text-white" />
             </div>
+          </div>
+          <div className="absolute -bottom-2 -right-2 p-2 bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-100 dark:border-slate-700 text-slate-400 group-hover:text-blue-500 transition-colors pointer-events-none">
+            <Camera size={20} />
           </div>
         </div>
         <div className="text-center md:text-left">
@@ -154,7 +263,7 @@ const Profile = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         <div className="md:col-span-2 space-y-8">
-          {/* Identity Card */}
+          {/* Carte d'Identité */}
           <div className="card overflow-hidden group">
             <div className="flex items-center gap-3 mb-6">
               <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-xl text-blue-600">
@@ -185,18 +294,19 @@ const Profile = () => {
                   <input
                     type="email"
                     value={formData.email}
-                    disabled
-                    className="input pl-12 bg-slate-50 dark:bg-slate-800 cursor-not-allowed text-slate-500 font-medium opacity-70"
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    className="input pl-12 text-slate-800 dark:text-white font-medium"
+                    placeholder="votre@email.com"
                   />
                 </div>
                 <p className="text-[10px] font-bold text-slate-400 uppercase mt-2 italic flex items-center gap-1">
-                  <ShieldCheck size={12} /> L'email est vérifié et non modifiable
+                  <ShieldCheck size={12} /> Le changement d'email nécessite une validation
                 </p>
               </div>
             </div>
           </div>
 
-          {/* Automation & UI Card */}
+          {/* Préférences UI & Notifications */}
           <div className="card">
             <div className="flex items-center gap-3 mb-6">
               <div className="p-2 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl text-indigo-600">
@@ -206,6 +316,7 @@ const Profile = () => {
             </div>
 
             <div className="space-y-4">
+              {/* Thème */}
               <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-100 dark:border-slate-800">
                 <div className="flex items-center gap-4">
                   <div className="p-3 bg-white dark:bg-slate-700 rounded-xl shadow-sm text-slate-500">
@@ -221,6 +332,7 @@ const Profile = () => {
                 </button>
               </div>
 
+              {/* Notifications */}
               <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-100 dark:border-slate-800">
                 <div className="flex items-center gap-4">
                   <div className={`p-3 bg-white dark:bg-slate-700 rounded-xl shadow-sm ${notificationPermission === 'granted' ? 'text-emerald-500' : 'text-slate-400'}`}>
@@ -263,6 +375,7 @@ const Profile = () => {
           </div>
         </div>
 
+        {/* Informations Système (UID, État) */}
         <div className="space-y-6">
           <div className="card bg-slate-900 border-none text-white shadow-xl overflow-hidden relative">
             <div className="absolute -top-12 -right-12 w-32 h-32 bg-blue-500/20 blur-3xl rounded-full"></div>

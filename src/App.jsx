@@ -6,7 +6,7 @@ import Navbar from './components/Navbar';
 import ThemeProvider from './contexts/ThemeContext';
 import AuthContext from './contexts/AuthContext';
 
-// Pages
+// Import des pages
 import Login from './pages/Auth/Login';
 import Register from './pages/Auth/Register';
 import ForgotPassword from './pages/Auth/ForgotPassword';
@@ -16,15 +16,19 @@ import Calendar from './pages/Calendar';
 import Dashboard from './pages/Dashboard';
 import Profile from './pages/Profile';
 
-// Composants
+// Import des composants globaux
 import ToastContainer from './components/ToastContainer';
 
+/**
+ * Composant Racine de l'application
+ * Gère l'état global de l'authentification, le routage et les contextes (Thème, Auth).
+ */
 function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // Surveillance de l'état d'authentification de l'utilisateur
   useEffect(() => {
-    // Écouter les changements d'authentification
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
       setLoading(false);
@@ -33,6 +37,7 @@ function App() {
     return () => unsubscribe();
   }, []);
 
+  // Écran de chargement initial stylisé
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950">
@@ -60,6 +65,7 @@ function App() {
         <Router basename={import.meta.env.BASE_URL}>
           <div className="min-h-screen bg-[#fafbfc] dark:bg-slate-950 text-slate-900 dark:text-slate-100 selection:bg-blue-500/30">
             {user ? (
+              /* Routes pour utilisateurs Authentifiés */
               <>
                 <Navbar />
                 <main className="container mx-auto px-4 py-8 md:py-12 max-w-7xl">
@@ -75,6 +81,7 @@ function App() {
                 </main>
               </>
             ) : (
+              /* Routes pour utilisateurs Non-Authentifiés */
               <Routes>
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
@@ -82,6 +89,7 @@ function App() {
                 <Route path="*" element={<Navigate to="/login" replace />} />
               </Routes>
             )}
+            {/* Overlay global pour les notifications */}
             <ToastContainer />
           </div>
         </Router>

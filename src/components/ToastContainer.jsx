@@ -8,15 +8,27 @@ import {
   X
 } from 'lucide-react';
 
+/**
+ * Système de notifications Toast "Premium"
+ * Utilise un pattern de listeners pour déclencher des notifications depuis n'importe quel fichier.
+ */
 let toastIdCounter = 0;
 const toastListeners = [];
 
+/**
+ * Déclenche une notification
+ * @param {string} message - Le contenu textuel
+ * @param {string} type - 'success', 'error', 'warning', 'info'
+ * @param {number} duration - Durée d'affichage en ms
+ */
 export const showToast = (message, type = 'info', duration = 4000) => {
   const id = ++toastIdCounter;
   const toast = { id, message, type, duration };
 
+  // Notifie tous les containers actifs
   toastListeners.forEach(listener => listener(toast));
 
+  // Auto-suppression après la durée spécifiée
   if (duration > 0) {
     setTimeout(() => {
       removeToast(id);
@@ -26,14 +38,21 @@ export const showToast = (message, type = 'info', duration = 4000) => {
   return id;
 };
 
+/**
+ * Supprime explicitement une notification par son ID
+ */
 export const removeToast = (id) => {
   toastListeners.forEach(listener => listener({ id, remove: true }));
 };
 
+/**
+ * Composant de rendu des notifications (placé à la racine du projet)
+ */
 const ToastContainer = () => {
   const [toasts, setToasts] = useState([]);
 
   useEffect(() => {
+    // S'enregistrer comme listener lors du montage
     const listener = (toast) => {
       if (toast.remove) {
         setToasts((prev) => prev.filter((t) => t.id !== toast.id));
@@ -44,6 +63,7 @@ const ToastContainer = () => {
 
     toastListeners.push(listener);
     return () => {
+      // Nettoyage lors du démontage
       const index = toastListeners.indexOf(listener);
       if (index > -1) {
         toastListeners.splice(index, 1);
@@ -51,6 +71,9 @@ const ToastContainer = () => {
     };
   }, []);
 
+  /**
+   * Retourne les styles et icônes correspondants au type de Toast
+   */
   const getToastConfig = (type) => {
     switch (type) {
       case 'success':
@@ -85,7 +108,7 @@ const ToastContainer = () => {
   };
 
   return (
-    <div className="fixed top-8 right-8 z-[100] space-y-3 w-full max-w-sm pointer-events-none">
+    <div className="fixed top-4 right-4 left-4 sm:left-auto sm:top-8 sm:right-8 z-[100] space-y-3 w-auto sm:max-w-sm pointer-events-none">
       <AnimatePresence mode="popLayout">
         {toasts.map((toast) => {
           const config = getToastConfig(toast.type);
