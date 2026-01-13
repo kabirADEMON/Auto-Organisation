@@ -1,7 +1,7 @@
 {
-  "name": "auto-organisation-pwa",
+  "name": "autoprogressive",
   "version": "1.0.0",
-  "description": "PWA React + Firebase pour la gestion de tâches, habitudes et calendrier",
+  "description": "AutoProgressive - PWA React + Firebase pour la gestion de tâches et habitudes",
   "type": "module",
   "scripts": {
     "dev": "vite",
