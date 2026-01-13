@@ -22,7 +22,7 @@
 
   /* Premium Glassmorphism Cards */
   .card {
-    @apply bg-white/90 dark:bg-slate-900/80 backdrop-blur-md rounded-2xl md:rounded-3xl shadow-[0_4px_20px_rgb(0, 0, 0, 0.03)] border border-slate-200 dark:border-slate-800 p-4 md:p-6 transition-all duration-300;
+    @apply bg-white/90 dark:bg-slate-900/80 backdrop-blur-md rounded-2xl md:rounded-3xl shadow-premium border border-slate-200 dark:border-slate-800 p-4 md:p-6 transition-all duration-300;
   }
 
   /* Modern Button Styles */

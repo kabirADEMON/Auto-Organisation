@@ -21,11 +21,12 @@ export default {
           900: '#1e3a8a',
         },
       },
+      boxShadow: {
+        'premium': '0 4px 20px rgba(0, 0, 0, 0.03)',
+      },
     },
   },
   plugins: [
     require('tailwindcss-animate'),
   ],
 }
-
-
