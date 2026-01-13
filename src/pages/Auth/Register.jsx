@@ -50,20 +50,20 @@ const Register = () => {
         }
       });
 
-      showToast('Compte créé avec succès!', 'success');
+      showToast('Votre compte a été créé avec succès.', 'success');
       navigate('/dashboard');
     } catch (error) {
-      let errorMessage = 'Erreur lors de la création du compte';
+      let errorMessage = 'Une erreur est survenue lors de la création de votre compte.';
 
       switch (error.code) {
         case 'auth/email-already-in-use':
-          errorMessage = 'Cet email est déjà utilisé';
+          errorMessage = 'Cette adresse email est déjà associée à un compte existant.';
           break;
         case 'auth/invalid-email':
-          errorMessage = 'Email invalide';
+          errorMessage = 'L\'adresse email saisie n\'est pas valide.';
           break;
         case 'auth/weak-password':
-          errorMessage = 'Le mot de passe est trop faible';
+          errorMessage = 'Le mot de passe choisi est trop simple. Veuillez utiliser au moins 6 caractères.';
           break;
         default:
           errorMessage = error.message;
@@ -79,13 +79,13 @@ const Register = () => {
     <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900 py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
       {/* Background Decorative Elements */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0 pointer-events-none">
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-500/10 rounded-full blur-[100px]"></div>
+        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-indigo-500/10 rounded-full blur-[100px]"></div>
         <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-violet-500/10 rounded-full blur-[100px]"></div>
       </div>
 
       <div className="max-w-md w-full space-y-8 relative z-10 p-2">
         <div className="text-center">
-          <div className="inline-flex items-center justify-center p-3 rounded-2xl bg-gradient-to-tr from-violet-600 to-indigo-600 text-white mb-6 shadow-lg shadow-violet-500/30">
+          <div className="inline-flex items-center justify-center p-3 rounded-2xl bg-gradient-to-tr from-indigo-600 to-violet-600 text-white mb-6 shadow-lg shadow-indigo-500/30">
             <UserPlus size={32} />
           </div>
           <h2 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">
@@ -204,7 +204,7 @@ const Register = () => {
             <div className="text-center">
               <Link
                 to="/login"
-                className="text-sm font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
+                className="text-sm font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors"
               >
                 Se connecter
               </Link>

@@ -176,10 +176,10 @@ const Profile = () => {
         updatedAt: new Date()
       });
 
-      showToast('Profil mis à jour', 'success');
+      showToast('Votre profil a été mis à jour avec succès.', 'success');
     } catch (error) {
       console.error('Erreur:', error);
-      showToast('Erreur lors de la mise à jour', 'error');
+      showToast('Une erreur est survenue lors de la mise à jour de votre profil.', 'error');
     } finally {
       setSaving(false);
     }

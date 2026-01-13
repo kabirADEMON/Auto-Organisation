@@ -94,18 +94,18 @@ const Tasks = () => {
       if (editingTask) {
         // Mise à jour existante
         await updateDoc(doc(db, 'tasks', editingTask.id), taskData);
-        showToast('Tâche mise à jour', 'success');
+        showToast('Les modifications ont été enregistrées avec succès.', 'success');
       } else {
         // Création nouvelle tâche
         await addDoc(collection(db, 'tasks'), taskData);
-        showToast('Tâche créée', 'success');
+        showToast('Nouvel objectif créé avec succès.', 'success');
       }
 
       resetForm();
       setIsModalOpen(false);
     } catch (error) {
       console.error('Erreur:', error);
-      showToast('Erreur lors de la sauvegarde', 'error');
+      showToast('Une erreur est survenue lors de l\'enregistrement des données.', 'error');
     }
   };
 

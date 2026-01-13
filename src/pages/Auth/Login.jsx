@@ -17,29 +17,29 @@ const Login = () => {
 
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      showToast('Connexion réussie!', 'success');
+      showToast('Authentification réussie. Bienvenue sur votre espace.', 'success');
       navigate('/dashboard');
     } catch (error) {
-      let errorMessage = 'Erreur lors de la connexion';
+      let errorMessage = 'Une erreur est survenue lors de l\'authentification.';
 
       switch (error.code) {
         case 'auth/user-not-found':
-          errorMessage = 'Aucun compte trouvé avec cet email';
+          errorMessage = 'Aucun compte n\'est associé à cette adresse email.';
           break;
         case 'auth/wrong-password':
-          errorMessage = 'Mot de passe incorrect';
+          errorMessage = 'Le mot de passe saisi est incorrect.';
           break;
         case 'auth/invalid-email':
-          errorMessage = 'Email invalide';
+          errorMessage = 'L\'adresse email saisie n\'est pas valide.';
           break;
         case 'auth/user-disabled':
-          errorMessage = 'Ce compte a été désactivé';
+          errorMessage = 'Ce compte utilisateur a été désactivé.';
           break;
         case 'auth/too-many-requests':
-          errorMessage = 'Trop de tentatives. Réessayez plus tard';
+          errorMessage = 'Trop de tentatives infructueuses. Veuillez patienter avant de réessayer.';
           break;
         default:
-          errorMessage = error.message;
+          errorMessage = 'Une erreur inattendue est survenue. Veuillez réessayer.';
       }
 
       showToast(errorMessage, 'error');
@@ -52,13 +52,13 @@ const Login = () => {
     <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900 py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
       {/* Background Decorative Elements */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0 pointer-events-none">
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-500/10 rounded-full blur-[100px]"></div>
-        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-indigo-500/10 rounded-full blur-[100px]"></div>
+        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-indigo-500/10 rounded-full blur-[100px]"></div>
+        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-violet-500/10 rounded-full blur-[100px]"></div>
       </div>
 
       <div className="max-w-md w-full space-y-8 relative z-10 p-2">
         <div className="text-center">
-          <div className="inline-flex items-center justify-center p-3 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white mb-6 shadow-lg shadow-blue-500/30">
+          <div className="inline-flex items-center justify-center p-3 rounded-2xl bg-gradient-to-tr from-indigo-600 to-violet-600 text-white mb-6 shadow-lg shadow-indigo-500/30">
             <LogIn size={32} />
           </div>
           <h2 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">
@@ -100,7 +100,7 @@ const Login = () => {
                   </label>
                   <Link
                     to="/forgot-password"
-                    className="text-sm font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300"
+                    className="text-sm font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300"
                   >
                     Oublié?
                   </Link>
@@ -145,7 +145,7 @@ const Login = () => {
             <div className="text-center">
               <Link
                 to="/register"
-                className="text-sm font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
+                className="text-sm font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors"
               >
                 Créer un nouveau compte
               </Link>

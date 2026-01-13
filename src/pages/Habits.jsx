@@ -79,17 +79,17 @@ const Habits = () => {
 
       if (editingHabit) {
         await updateDoc(doc(db, 'habits', editingHabit.id), habitData);
-        showToast('Habitude mise à jour', 'success');
+        showToast('La routine a été mise à jour avec succès.', 'success');
       } else {
         await addDoc(collection(db, 'habits'), habitData);
-        showToast('Habitude créée', 'success');
+        showToast('Nouvelle routine enregistrée avec succès.', 'success');
       }
 
       resetForm();
       setIsModalOpen(false);
     } catch (error) {
       console.error('Erreur:', error);
-      showToast('Erreur lors de la sauvegarde', 'error');
+      showToast('Une erreur est survenue lors de l\'enregistrement de la routine.', 'error');
     }
   };
 

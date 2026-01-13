@@ -40,16 +40,16 @@ function App() {
   // Écran de chargement initial stylisé
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950">
+      <div className="min-h-screen flex items-center justify-center bg-slate-100 dark:bg-slate-950">
         <div className="relative">
-          <div className="absolute inset-0 bg-blue-500/20 blur-[100px] rounded-full"></div>
+          <div className="absolute inset-0 bg-indigo-500/20 blur-[100px] rounded-full"></div>
           <div className="relative flex flex-col items-center">
-            <div className="w-16 h-16 border-4 border-slate-200 dark:border-slate-800 border-t-blue-600 rounded-full animate-spin"></div>
-            <div className="mt-8">
-              <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-widest uppercase italic">Soper</h1>
+            <div className="w-16 h-16 border-4 border-slate-200 dark:border-slate-800 border-t-indigo-600 rounded-full animate-spin"></div>
+            <div className="mt-8 text-center">
+              <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-widest uppercase italic">AutoProgressive</h1>
               <div className="flex justify-center gap-1 mt-1">
                 {[1, 2, 3].map(i => (
-                  <div key={i} className="w-1.5 h-1.5 bg-blue-600 rounded-full animate-pulse" style={{ animationDelay: `${i * 200}ms` }}></div>
+                  <div key={i} className="w-1.5 h-1.5 bg-indigo-600 rounded-full animate-pulse" style={{ animationDelay: `${i * 200}ms` }}></div>
                 ))}
               </div>
             </div>
